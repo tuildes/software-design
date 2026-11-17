@@ -13,7 +13,10 @@ let package = Package(
     targets: [
         .target(
             name: "LocacaoEspacos",
-            path: "src/LocacaoEspacos"
+            path: "src/LocacaoEspacos",
+            linkerSettings: [
+                .linkedLibrary("sqlite3"),
+            ]
         ),
         .executableTarget(
             name: "App",
