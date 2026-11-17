@@ -1,0 +1,28 @@
+@startuml
+title Diagrama de Comunicacao - Fluxo de Realizacao de Reserva
+
+object "cliente : Usuario" as Cliente
+object ":ReservaController" as RC
+object ":ReservaService" as RS
+object ":UsuarioRepository" as UR
+object ":EspacoEsportivoRepository" as ER
+object ":ReservaRepository" as RR
+object "u : Usuario" as U
+object "e : EspacoEsportivo" as E
+object "rExistente : Reserva" as RE
+object "novaReserva : Reserva" as NR
+object ":Notificador" as N
+
+Cliente --> RC : "1: criarReserva(request)"
+RC --> RS : "1.1: realizarReserva(usuarioId, espacoId, periodo)"
+
+RS --> UR : "1.1.1: buscarPorId(usuarioId)"
+RS --> U : "1.1.2: podeRealizarReserva()"
+RS --> ER : "1.1.3: buscarPorId(espacoId)"
+RS --> E : "1.1.4: estaDisponivelParaReserva(periodo)\n1.1.5: atendeRestricoes(u, periodo)"
+RS --> RR : "1.1.6: listarPorEspacoEData(espacoId, data)\n1.1.9: salvar(novaReserva)"
+RS --> RE : "1.1.7: conflitaCom(periodo)"
+RS --> NR : "1.1.8: new(e, u, periodo)"
+RS --> N : "1.1.10: notificar(email, assunto, mensagem)"
+
+@enduml

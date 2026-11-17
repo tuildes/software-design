@@ -1,0 +1,78 @@
+@startuml
+title Diagrama de Componentes - Arquitetura Combinada do Sistema
+skinparam componentStyle uml2
+
+actor "Usuario / Admin" as Ator
+
+node "Cliente (Web / CLI)" as ClienteApp
+
+node "Servidor de Aplicacao (Monolito Modular - 1 Deploy)" as Servidor {
+
+  package "Adaptadores Primarios (Driving)" {
+    [ReservaController]
+    [EspacoEsportivoController]
+    [UsuarioController]
+  }
+
+  package "Nucleo da Aplicacao (Hexagonal Core)" {
+    interface "ReservaPort" as PReserva
+    interface "EspacoPort" as PEspaco
+    interface "UsuarioPort" as PUsuario
+
+    component "Modulo de Reservas\n(ReservaService, Reserva, PeriodoHorario)" as ModReservas
+    component "Modulo de Espacos Esportivos\n(EspacoEsportivoService, EspacoEsportivo, RestricaoUso)" as ModEspacos
+    component "Modulo de Usuarios\n(UsuarioService, Usuario)" as ModUsuarios
+
+    interface "ReservaRepository" as IReservaRepo
+    interface "EspacoEsportivoRepository" as IEspacoRepo
+    interface "UsuarioRepository" as IUsuarioRepo
+    interface "Notificador" as INotificador
+  }
+
+  package "Adaptadores Secundarios (Driven)" {
+    [PostgreSQLRepositories\n(Implementacoes JDBC/ORM)] as PGAdapter
+    [InMemoryRepositories\n(Testes / Prototipo)] as MemAdapter
+    [EmailNotificador] as EmailAdapter
+    [NotificadorFake] as FakeAdapter
+  }
+}
+
+database "Banco de Dados Relacional Unico\n(Repository Architecture - Single Source of Truth)" as DB
+cloud "Sistema Externo de Notificacao\n(Servidor SMTP / API Mensageria)" as ServicoExterno
+
+Ator --> ClienteApp : interage
+ClienteApp --> [ReservaController] : HTTP/REST (JSON)
+ClienteApp --> [EspacoEsportivoController] : HTTP/REST (JSON)
+ClienteApp --> [UsuarioController] : HTTP/REST (JSON)
+
+[ReservaController] --> PReserva
+[EspacoEsportivoController] --> PEspaco
+[UsuarioController] --> PUsuario
+
+PReserva - ModReservas
+PEspaco - ModEspacos
+PUsuario - ModUsuarios
+
+ModReservas ..> ModEspacos : chamadas locais in-process
+ModReservas ..> ModUsuarios : chamadas locais in-process
+
+ModReservas --> IReservaRepo
+ModReservas --> IEspacoRepo
+ModReservas --> IUsuarioRepo
+ModReservas --> INotificador
+
+ModEspacos --> IEspacoRepo
+ModUsuarios --> IUsuarioRepo
+
+PGAdapter ..|> IReservaRepo
+PGAdapter ..|> IEspacoRepo
+PGAdapter ..|> IUsuarioRepo
+MemAdapter ..|> IReservaRepo
+
+EmailAdapter ..|> INotificador
+FakeAdapter ..|> INotificador
+
+PGAdapter --> DB : SQL / Transacoes ACID
+EmailAdapter --> ServicoExterno : SMTP / API HTTP
+
+@enduml

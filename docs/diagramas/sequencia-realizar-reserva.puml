@@ -1,0 +1,92 @@
+@startuml
+title Diagrama de Sequencia - Realizar Reserva de Espaco Esportivo
+autonumber
+
+actor "Usuario (Cliente)" as Cliente
+participant ":ReservaController" as RC
+participant ":ReservaService" as RS
+participant ":UsuarioRepository" as UR
+participant ":EspacoEsportivoRepository" as ER
+participant ":ReservaRepository" as RR
+participant "u:Usuario" as U
+participant "e:EspacoEsportivo" as E
+participant "rExistente:Reserva" as RE
+participant "novaReserva:Reserva" as NR
+participant ":Notificador" as N
+
+Cliente -> RC : criarReserva(request)
+activate RC
+
+RC -> RS : realizarReserva(usuarioId, espacoId, periodo)
+activate RS
+
+RS -> UR : buscarPorId(usuarioId)
+activate UR
+UR --> RS : u
+deactivate UR
+
+RS -> U : podeRealizarReserva()
+activate U
+U --> RS : apto
+deactivate U
+
+alt usuario inapto ou inativo
+  RS --> RC : erro("Usuario nao autorizado a reservar")
+  RC --> Cliente : 403 / Mensagem de erro
+else usuario apto
+  RS -> ER : buscarPorId(espacoId)
+  activate ER
+  ER --> RS : e
+  deactivate ER
+
+  RS -> E : estaDisponivelParaReserva(periodo)
+  activate E
+  E --> RS : disponivel
+  deactivate E
+
+  RS -> E : atendeRestricoes(u, periodo)
+  activate E
+  E --> RS : atende
+  deactivate E
+
+  alt espaco em manutencao ou restricao violada
+    RS --> RC : erro("Espaco indisponivel ou restricao violada")
+    RC --> Cliente : 409 / Mensagem de erro
+  else espaco disponivel e atende restricoes
+    RS -> RR : listarPorEspacoEData(espacoId, periodo.data)
+    activate RR
+    RR --> RS : reservasExistentes
+    deactivate RR
+
+    loop para cada rExistente em reservasExistentes
+      RS -> RE : conflitaCom(periodo)
+      activate RE
+      RE --> RS : conflito
+      deactivate RE
+    end
+
+    alt existe conflito de horario
+      RS --> RC : erro("Horario ja reservado")
+      RC --> Cliente : 409 / Mensagem de conflito
+    else horario livre
+      create NR
+      RS -> NR : new(e, u, periodo)
+      RS -> RR : salvar(novaReserva)
+      activate RR
+      RR --> RS : salvo
+      deactivate RR
+
+      RS -> N : notificar(u.email, "Reserva Confirmada", detalhes)
+      activate N
+      N --> RS : enviado
+      deactivate N
+
+      RS --> RC : novaReserva
+      RC --> Cliente : 201 Created (Resumo da Reserva)
+    end
+  end
+end
+
+deactivate RS
+deactivate RC
+@enduml

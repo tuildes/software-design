@@ -1,0 +1,189 @@
+@startuml
+title Diagrama de Classes - Sistema de Locacao de Espacos Esportivos
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "Adaptadores Primarios (Presentation)" {
+  class ReservaController {
+    - reservaService : ReservaService
+    + criarReserva(request) : Response
+    + cancelarReserva(reservaId : UUID, usuarioId : UUID) : Response
+    + consultarDisponibilidadeEspaco(espacoId : UUID, data : LocalDate) : Response
+    + consultarEspacosDisponiveis(data : LocalDate, horaInicio : LocalTime, horaFim : LocalTime) : Response
+  }
+
+  class EspacoEsportivoController {
+    - espacoService : EspacoEsportivoService
+    + cadastrarEspaco(request) : Response
+    + agendarManutencao(espacoId : UUID, request) : Response
+    + definirRestricoes(espacoId : UUID, request) : Response
+  }
+
+  class UsuarioController {
+    - usuarioService : UsuarioService
+    + cadastrarUsuario(request) : Response
+  }
+}
+
+package "Aplicacao (Use Cases / Services)" {
+  class ReservaService {
+    - reservaRepository : ReservaRepository
+    - espacoRepository : EspacoEsportivoRepository
+    - usuarioRepository : UsuarioRepository
+    - notificador : Notificador
+    + realizarReserva(usuarioId : UUID, espacoId : UUID, periodo : PeriodoHorario) : Reserva
+    + cancelarReserva(reservaId : UUID, usuarioId : UUID) : void
+    + consultarHorariosDisponiveis(espacoId : UUID, data : LocalDate) : List<PeriodoHorario>
+    + consultarEspacosDisponiveis(periodo : PeriodoHorario) : List<EspacoEsportivo>
+  }
+
+  class EspacoEsportivoService {
+    - espacoRepository : EspacoEsportivoRepository
+    + cadastrarEspaco(nome : String, tipo : String, capacidade : int) : EspacoEsportivo
+    + agendarManutencao(espacoId : UUID, periodo : PeriodoHorario) : void
+    + liberarManutencao(espacoId : UUID) : void
+    + definirRestricoes(espacoId : UUID, restricoes : List<RestricaoUso>) : void
+  }
+
+  class UsuarioService {
+    - usuarioRepository : UsuarioRepository
+    + cadastrarUsuario(nome : String, email : String, telefone : String, perfil : TipoPerfil) : Usuario
+    + buscarUsuario(usuarioId : UUID) : Usuario
+  }
+}
+
+package "Dominio (Core)" {
+  enum StatusReserva {
+    CONFIRMADA
+    CANCELADA
+  }
+
+  enum TipoPerfil {
+    CLIENTE
+    ADMIN
+  }
+
+  class Usuario {
+    - id : UUID
+    - nome : String
+    - email : String
+    - telefone : String
+    - perfil : TipoPerfil
+    - ativo : boolean
+    + podeRealizarReserva() : boolean
+  }
+
+  class EspacoEsportivo {
+    - id : UUID
+    - nome : String
+    - tipo : String
+    - capacidade : int
+    - emManutencao : boolean
+    - periodosManutencao : List<PeriodoHorario>
+    - restricoesUso : List<RestricaoUso>
+    + estaDisponivelParaReserva(periodo : PeriodoHorario) : boolean
+    + atendeRestricoes(usuario : Usuario, periodo : PeriodoHorario) : boolean
+    + iniciarManutencao(periodo : PeriodoHorario) : void
+    + encerrarManutencao() : void
+    + adicionarRestricao(restricao : RestricaoUso) : void
+  }
+
+  class Reserva {
+    - id : UUID
+    - espacoEsportivo : EspacoEsportivo
+    - usuario : Usuario
+    - periodoHorario : PeriodoHorario
+    - status : StatusReserva
+    + cancelar() : void
+    + estaAtiva() : boolean
+    + conflitaCom(outroPeriodo : PeriodoHorario) : boolean
+  }
+
+  class PeriodoHorario <<ValueObject>> {
+    - data : LocalDate
+    - horaInicio : LocalTime
+    - horaFim : LocalTime
+    + sobrepoe(outroPeriodo : PeriodoHorario) : boolean
+    + ehValido() : boolean
+  }
+
+  class RestricaoUso <<ValueObject>> {
+    - descricao : String
+    - duracaoMaximaMinutos : int
+    - antecedenciaMinimaHoras : int
+    - apenasUsuariosAutorizados : boolean
+    + validar(usuario : Usuario, periodo : PeriodoHorario) : boolean
+  }
+}
+
+package "Portas Secundarias (Ports Out)" {
+  interface ReservaRepository {
+    + salvar(reserva : Reserva) : void
+    + buscarPorId(id : UUID) : Reserva
+    + listarPorEspacoEData(espacoId : UUID, data : LocalDate) : List<Reserva>
+    + listarAtivasPorPeriodo(periodo : PeriodoHorario) : List<Reserva>
+  }
+
+  interface EspacoEsportivoRepository {
+    + salvar(espaco : EspacoEsportivo) : void
+    + buscarPorId(id : UUID) : EspacoEsportivo
+    + listarTodos() : List<EspacoEsportivo>
+  }
+
+  interface UsuarioRepository {
+    + salvar(usuario : Usuario) : void
+    + buscarPorId(id : UUID) : Usuario
+  }
+
+  interface Notificador {
+    + notificar(destinatario : String, assunto : String, mensagem : String) : void
+  }
+}
+
+package "Adaptadores Secundarios (Infrastructure)" {
+  class PostgreSQLReservaRepository
+  class InMemoryReservaRepository
+  class PostgreSQLEspacoEsportivoRepository
+  class PostgreSQLUsuarioRepository
+  class EmailNotificador
+  class NotificadorFake
+}
+
+' Relacoes Presentation -> Application
+ReservaController --> ReservaService
+EspacoEsportivoController --> EspacoEsportivoService
+UsuarioController --> UsuarioService
+
+' Relacoes Application -> Ports e Domain
+ReservaService --> ReservaRepository
+ReservaService --> EspacoEsportivoRepository
+ReservaService --> UsuarioRepository
+ReservaService --> Notificador
+ReservaService ..> Reserva : cria
+ReservaService ..> EspacoEsportivo : consulta
+ReservaService ..> Usuario : consulta
+
+EspacoEsportivoService --> EspacoEsportivoRepository
+EspacoEsportivoService ..> EspacoEsportivo : gerencia
+
+UsuarioService --> UsuarioRepository
+UsuarioService ..> Usuario : gerencia
+
+' Relacoes Domain
+Usuario "1" -- "0..*" Reserva : realiza >
+EspacoEsportivo "1" -- "0..*" Reserva : recebe >
+Reserva *-- "1" PeriodoHorario
+Reserva --> StatusReserva
+Usuario --> TipoPerfil
+EspacoEsportivo *-- "0..*" RestricaoUso
+EspacoEsportivo *-- "0..*" PeriodoHorario : manutencoes
+
+' Implementacoes dos Adaptadores
+PostgreSQLReservaRepository ..|> ReservaRepository
+InMemoryReservaRepository ..|> ReservaRepository
+PostgreSQLEspacoEsportivoRepository ..|> EspacoEsportivoRepository
+PostgreSQLUsuarioRepository ..|> UsuarioRepository
+EmailNotificador ..|> Notificador
+NotificadorFake ..|> Notificador
+
+@enduml

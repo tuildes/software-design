@@ -1,0 +1,60 @@
+@startuml
+title Diagrama de Sequencia - Consultar Disponibilidade e Cancelar Reserva
+autonumber
+
+actor "Usuario (Cliente)" as Cliente
+participant ":ReservaController" as RC
+participant ":ReservaService" as RS
+participant ":EspacoEsportivoRepository" as ER
+participant ":ReservaRepository" as RR
+participant "e:EspacoEsportivo" as E
+participant "r:Reserva" as R
+participant ":Notificador" as N
+
+group Consultar Disponibilidade de Horarios (RF07)
+  Cliente -> RC : consultarDisponibilidadeEspaco(espacoId, data)
+  activate RC
+  RC -> RS : consultarHorariosDisponiveis(espacoId, data)
+  activate RS
+  RS -> ER : buscarPorId(espacoId)
+  ER --> RS : e
+  RS -> RR : listarPorEspacoEData(espacoId, data)
+  RR --> RS : reservas
+  RS -> E : estaDisponivelParaReserva(periodo)
+  E --> RS : disponibilidade
+  RS --> RC : listaHorariosDisponiveis
+  deactivate RS
+  RC --> Cliente : 200 OK (Horarios Disponiveis)
+  deactivate RC
+end
+
+group Cancelar Reserva (RF03 + RF06)
+  Cliente -> RC : cancelarReserva(reservaId, usuarioId)
+  activate RC
+  RC -> RS : cancelarReserva(reservaId, usuarioId)
+  activate RS
+  RS -> RR : buscarPorId(reservaId)
+  RR --> RS : r
+
+  alt reserva inexistente ou ja cancelada
+    RS --> RC : erro("Nao e possivel cancelar esta reserva")
+    RC --> Cliente : 400 / 409 Erro
+  else reserva ativa
+    RS -> R : cancelar()
+    activate R
+    R --> RS : status = CANCELADA
+    deactivate R
+
+    RS -> RR : salvar(r)
+    RR --> RS : atualizado
+
+    RS -> N : notificar(destinatario, "Reserva Cancelada", detalhes)
+    N --> RS : enviado
+
+    RS --> RC : void
+    RC --> Cliente : 200 OK (Reserva Cancelada)
+  end
+  deactivate RS
+  deactivate RC
+end
+@enduml
