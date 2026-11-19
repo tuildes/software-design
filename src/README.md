@@ -118,7 +118,7 @@ Base: `http://127.0.0.1:8080/api/v1`
 | `GET` | `/reservas` | Listar reservas |
 | `GET` | `/espacos/{id}/horarios-disponiveis?...` | Consulta de disponibilidade |
 
-Detalhes de corpos e códigos de erro: [`docs/api.md`](../docs/api.md) (quando preenchido) e os controllers em `Adaptadores/Primarios/`.
+Detalhes (motivo da API, corpos, erros, curl e roteiro de demo): [`docs/api.md`](../docs/api.md).
 
 ---
 

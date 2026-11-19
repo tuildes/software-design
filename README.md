@@ -18,17 +18,18 @@ swift run locacao-espacos servidor \
 swift run locacao-espacos cli --servidor http://127.0.0.1:8080
 ```
 
-Comandos, estrutura de pastas e papéis de cada camada: **[`src/README.md`](src/README.md)**.
+Guia prático (por que API, endpoints, como rodar e apresentar): **[`docs/api.md`](docs/api.md)**.  
+Estrutura do código: **[`src/README.md`](src/README.md)**.
 
 ## Documentação
 
 | Documento | Conteúdo |
 | :--- | :--- |
+| [`docs/api.md`](docs/api.md) | API HTTP, motivo da escolha e como executar |
 | [`docs/01-problema-e-requisitos.md`](docs/01-problema-e-requisitos.md) | Problema e requisitos |
 | [`docs/02-modelo-de-dominio.md`](docs/02-modelo-de-dominio.md) | Modelo de domínio |
 | [`docs/03-proposta-arquitetural.md`](docs/03-proposta-arquitetural.md) | Proposta arquitetural |
 | [`docs/04-alternativas-e-tradeoffs.md`](docs/04-alternativas-e-tradeoffs.md) | Alternativas e trade-offs |
 | [`docs/05-prototipo-e-testes.md`](docs/05-prototipo-e-testes.md) | Protótipo e evolução |
-| [`docs/api.md`](docs/api.md) | API HTTP |
 | [`docs/diagramas/`](docs/diagramas/) | Diagramas |
 | [`docs/adr/`](docs/adr/) | ADRs |
