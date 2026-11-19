@@ -57,7 +57,14 @@ final class ServidorHttp {
         guard listen(fd, 32) == 0 else {
             throw ErroExterno(description: "nao foi possivel escutar a porta \(porta): \(String(cString: strerror(errno)))")
         }
-        print("Servidor HTTP em http://127.0.0.1:\(porta)")
+        let corte = TerminalCor.ciano(String(repeating: "─", count: 56))
+        print("  \(TerminalCor.rotulo("Escutando"))     \(TerminalCor.verde("http://127.0.0.1:\(porta)"))")
+        print("  \(TerminalCor.rotulo("API"))           /api/v1/...")
+        print("")
+        print(corte)
+        print("  \(TerminalCor.aviso("Aguardando requisicoes"))  \(TerminalCor.esmaecido("(Ctrl+C para encerrar)"))")
+        print(corte)
+        print("")
 
         while deveContinuar() {
             var clienteEndereco = sockaddr_in()
@@ -102,7 +109,10 @@ final class ServidorHttp {
         _ = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tempo, socklen_t(MemoryLayout.size(ofValue: tempo)))
         guard let requisicao = lerRequisicao(fd) else { return }
         let resposta = rotear(metodo: requisicao.metodo, caminho: requisicao.caminho, corpo: requisicao.corpo)
-        print("\(requisicao.metodo) \(requisicao.caminho) -> \(resposta.status)")
+        let metodo = requisicao.metodo.padding(toLength: 6, withPad: " ", startingAt: 0)
+        print("  \(TerminalCor.ciano(metodo)) \(requisicao.caminho)")
+        print("         -> \(TerminalCor.statusHttp(resposta.status))")
+        print("")
         escrever(fd, resposta)
     }
 

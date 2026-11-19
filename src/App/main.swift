@@ -20,17 +20,80 @@ private struct ItemSessao {
     let nome: String
 }
 
+// MARK: - Apresentação no terminal
+
+private enum Ui {
+    static let largura = 56
+
+    static func linha(_ caractere: Character = "─") {
+        print(TerminalCor.ciano(String(repeating: caractere, count: largura)))
+    }
+
+    static func linhaDupla() {
+        print(TerminalCor.ciano(String(repeating: "=", count: largura)))
+    }
+
+    static func vazio() {
+        print("")
+    }
+
+    static func banner(_ titulo: String) {
+        vazio()
+        linhaDupla()
+        print("  \(TerminalCor.titulo(titulo))")
+        linhaDupla()
+    }
+
+    static func secao(_ titulo: String) {
+        vazio()
+        linha()
+        print("  \(TerminalCor.titulo(titulo))")
+        linha()
+        vazio()
+    }
+
+    static func info(_ rotulo: String, _ valor: String) {
+        let nome = rotulo.padding(toLength: 14, withPad: " ", startingAt: 0)
+        print("  \(TerminalCor.rotulo(nome)) \(valor)")
+    }
+
+    static func item(_ texto: String) {
+        print("  \(texto)")
+    }
+
+    static func ok(_ texto: String) {
+        vazio()
+        print("  \(TerminalCor.sucesso("OK"))  \(texto)")
+        vazio()
+    }
+
+    static func falha(_ texto: String) {
+        vazio()
+        print("  \(TerminalCor.erro("ERRO"))  \(texto)")
+        vazio()
+    }
+
+    static func aviso(_ texto: String) {
+        print("  \(TerminalCor.aviso("!"))  \(texto)")
+    }
+
+    static func prompt(_ texto: String) {
+        print("  \(TerminalCor.ciano(texto))", terminator: "")
+        fflush(stdout)
+    }
+}
+
 private enum Cli {
     private static var usuariosSessao: [ItemSessao] = []
     private static var espacosSessao: [ItemSessao] = []
 
     static func executar(_ args: [String]) -> Int32 {
         if args.contains("--ajuda") || args.contains("-h") {
-            print(ajuda)
+            imprimirAjuda()
             return 0
         }
         if args.isEmpty {
-            print(ajuda)
+            imprimirAjuda()
             return 1
         }
         do {
@@ -46,18 +109,18 @@ private enum Cli {
             case "reserva":
                 return try reserva(Array(args.dropFirst()))
             default:
-                print("Comando desconhecido: \(args[0])")
-                print(ajuda)
+                Ui.falha("Comando desconhecido: \(args[0])")
+                imprimirAjuda()
                 return 1
             }
         } catch let erro as ErroCli {
-            print(erro.mensagem)
+            Ui.falha(erro.mensagem)
             return 1
         } catch let erro as ErroDeArranque {
-            print("Erro: \(erro.description)")
+            Ui.falha(erro.description)
             return 1
         } catch {
-            print("Erro: \(error)")
+            Ui.falha("\(error)")
             return 1
         }
     }
@@ -79,19 +142,22 @@ private enum Cli {
         let mapa = try valores(args)
         try exigir(mapa, ["--servidor"])
         let servidor = mapa["--servidor"] ?? "http://127.0.0.1:8080"
-        print("Locacao de Espacos Esportivos")
-        print("Servidor: \(servidor)")
-        print("Suba o servidor antes de usar as opcoes.")
+
+        Ui.banner("Locacao de Espacos Esportivos")
+        Ui.vazio()
+        Ui.info("Modo", "CLI interativo")
+        Ui.info("Servidor", servidor)
+        Ui.vazio()
+        Ui.aviso("Suba o servidor antes de usar as opcoes.")
+        Ui.vazio()
+
         while true {
-            print("")
-            print("1. Cadastrar usuario")
-            print("2. Cadastrar espaco")
-            print("3. Criar reserva")
-            print("4. Ver reservas")
-            print("0. Sair")
-            print("Opcao: ", terminator: "")
-            fflush(stdout)
+            imprimirMenu()
+            Ui.prompt("Opcao > ")
             guard let escolha = lerLinha()?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                Ui.vazio()
+                Ui.item("Encerrado.")
+                Ui.vazio()
                 return 0
             }
             switch escolha {
@@ -104,23 +170,39 @@ private enum Cli {
             case "4":
                 _ = listarReservasInterativo(servidor: servidor)
             case "0":
+                Ui.vazio()
+                Ui.linha()
+                Ui.item("Ate logo.")
+                Ui.linha()
+                Ui.vazio()
                 return 0
             default:
-                print("Opcao invalida.")
+                Ui.falha("Opcao invalida. Escolha 0 a 4.")
             }
         }
     }
 
+    private static func imprimirMenu() {
+        Ui.secao("Menu")
+        Ui.item("1.  Cadastrar usuario")
+        Ui.item("2.  Cadastrar espaco")
+        Ui.item("3.  Criar reserva")
+        Ui.item("4.  Ver reservas")
+        Ui.item("0.  Sair")
+        Ui.vazio()
+    }
+
     private static func cadastrarUsuarioInterativo(servidor: String) -> Int32 {
-        print("--- Cadastrar usuario ---")
+        Ui.secao("Cadastrar usuario")
         guard let nome = pedir("Nome"),
               let email = pedir("Email"),
               let telefone = pedir("Telefone") else {
-            print("Cadastro cancelado.")
+            Ui.aviso("Cadastro cancelado.")
+            Ui.vazio()
             return 1
         }
         guard let perfil = pedirPerfil() else {
-            print("Perfil invalido. Use CLIENTE ou ADMIN.")
+            Ui.falha("Perfil invalido. Use CLIENTE ou ADMIN.")
             return 1
         }
         let codigo = enviar(
@@ -132,7 +214,8 @@ private enum Cli {
                 "telefone": telefone,
                 "perfil": perfil,
             ],
-            servidor: servidor
+            servidor: servidor,
+            tituloSucesso: "Usuario cadastrado"
         )
         if codigo == 0, let id = ultimoIdEnviado {
             usuariosSessao.append(ItemSessao(id: id, nome: nome))
@@ -141,12 +224,13 @@ private enum Cli {
     }
 
     private static func cadastrarEspacoInterativo(servidor: String) -> Int32 {
-        print("--- Cadastrar espaco ---")
+        Ui.secao("Cadastrar espaco")
         guard let nome = pedir("Nome"),
               let tipo = pedir("Tipo"),
               let capacidadeTexto = pedir("Capacidade"),
               let capacidade = Int(capacidadeTexto), capacidade > 0 else {
-            print("Cadastro cancelado ou capacidade invalida.")
+            Ui.aviso("Cadastro cancelado ou capacidade invalida.")
+            Ui.vazio()
             return 1
         }
         let codigo = enviar(
@@ -157,7 +241,8 @@ private enum Cli {
                 "tipo": tipo,
                 "capacidade": capacidade,
             ],
-            servidor: servidor
+            servidor: servidor,
+            tituloSucesso: "Espaco cadastrado"
         )
         if codigo == 0, let id = ultimoIdEnviado {
             espacosSessao.append(ItemSessao(id: id, nome: nome))
@@ -166,7 +251,7 @@ private enum Cli {
     }
 
     private static func criarReservaInterativa(servidor: String) -> Int32 {
-        print("--- Criar reserva ---")
+        Ui.secao("Criar reserva")
         guard let usuario = pedirReferencia(
             rotulo: "Usuario",
             itens: usuariosSessao,
@@ -180,7 +265,8 @@ private enum Cli {
               let data = pedir("Data (AAAA-MM-DD)"),
               let inicio = pedir("Inicio (HH:MM)"),
               let fim = pedir("Fim (HH:MM)") else {
-            print("Reserva cancelada.")
+            Ui.aviso("Reserva cancelada.")
+            Ui.vazio()
             return 1
         }
         return enviar(
@@ -193,18 +279,24 @@ private enum Cli {
                 "horaInicio": inicio,
                 "horaFim": fim,
             ],
-            servidor: servidor
+            servidor: servidor,
+            tituloSucesso: "Reserva criada"
         )
     }
 
     private static func listarReservasInterativo(servidor: String) -> Int32 {
-        print("--- Reservas ---")
+        Ui.secao("Reservas")
         let resultado = requisitar(metodo: "GET", caminho: "/api/v1/reservas", campos: nil, servidor: servidor)
         if let falha = resultado.falha {
-            print("Erro de conexao: \(falha)")
+            Ui.falha("Erro de conexao: \(falha)")
             return 1
         }
-        imprimirResposta(status: resultado.status, texto: resultado.texto, listaReservas: true)
+        imprimirResposta(
+            status: resultado.status,
+            texto: resultado.texto,
+            listaReservas: true,
+            tituloSucesso: "Lista de reservas"
+        )
         return (200..<300).contains(resultado.status) ? 0 : 1
     }
 
@@ -223,7 +315,13 @@ private enum Cli {
         if let perfil = mapa["--perfil"] {
             campos["perfil"] = perfil.uppercased()
         }
-        return enviar(metodo: "POST", caminho: "/api/v1/usuarios", campos: campos, servidor: mapa["--servidor"])
+        return enviar(
+            metodo: "POST",
+            caminho: "/api/v1/usuarios",
+            campos: campos,
+            servidor: mapa["--servidor"],
+            tituloSucesso: "Usuario cadastrado"
+        )
     }
 
     private static func espaco(_ args: [String]) throws -> Int32 {
@@ -239,7 +337,13 @@ private enum Cli {
             throw ErroCli(mensagem: "Capacidade invalida")
         }
         let campos: [String: Any] = ["nome": nome, "tipo": tipo, "capacidade": capacidade]
-        return enviar(metodo: "POST", caminho: "/api/v1/espacos", campos: campos, servidor: mapa["--servidor"])
+        return enviar(
+            metodo: "POST",
+            caminho: "/api/v1/espacos",
+            campos: campos,
+            servidor: mapa["--servidor"],
+            tituloSucesso: "Espaco cadastrado"
+        )
     }
 
     private static func reserva(_ args: [String]) throws -> Int32 {
@@ -257,7 +361,13 @@ private enum Cli {
                 "horaInicio": try obrigatorio(mapa, "--inicio"),
                 "horaFim": try obrigatorio(mapa, "--fim"),
             ]
-            return enviar(metodo: "POST", caminho: "/api/v1/reservas", campos: campos, servidor: mapa["--servidor"])
+            return enviar(
+                metodo: "POST",
+                caminho: "/api/v1/reservas",
+                campos: campos,
+                servidor: mapa["--servidor"],
+                tituloSucesso: "Reserva criada"
+            )
         case "listar":
             let mapa = try valores(Array(args.dropFirst()))
             try exigir(mapa, ["--servidor"])
@@ -267,11 +377,17 @@ private enum Cli {
         }
     }
 
-    private static func enviar(metodo: String, caminho: String, campos: [String: Any]?, servidor: String?) -> Int32 {
+    private static func enviar(
+        metodo: String,
+        caminho: String,
+        campos: [String: Any]?,
+        servidor: String?,
+        tituloSucesso: String
+    ) -> Int32 {
         ultimoIdEnviado = nil
         let resultado = requisitar(metodo: metodo, caminho: caminho, campos: campos, servidor: servidor)
         if let falha = resultado.falha {
-            print("Erro de conexao: \(falha)")
+            Ui.falha("Erro de conexao: \(falha)")
             return 1
         }
         if (200..<300).contains(resultado.status),
@@ -280,20 +396,79 @@ private enum Cli {
            let id = objeto["id"] as? String {
             ultimoIdEnviado = id
         }
-        imprimirResposta(status: resultado.status, texto: resultado.texto, listaReservas: false)
+        imprimirResposta(
+            status: resultado.status,
+            texto: resultado.texto,
+            listaReservas: false,
+            tituloSucesso: tituloSucesso
+        )
         return (200..<300).contains(resultado.status) ? 0 : 1
     }
 
-    private static func imprimirResposta(status: Int, texto: String, listaReservas: Bool) {
+    private static func imprimirResposta(
+        status: Int,
+        texto: String,
+        listaReservas: Bool,
+        tituloSucesso: String
+    ) {
         if let mensagem = mensagemDeErro(texto) {
-            print("\(status) - \(mensagem)")
+            Ui.falha("\(TerminalCor.statusHttp(status)) — \(mensagem)")
             return
         }
-        print(status)
-        if listaReservas && status == 200 {
+
+        guard (200..<300).contains(status) else {
+            Ui.falha(TerminalCor.statusHttp(status))
+            Ui.item(formatar(texto))
+            Ui.vazio()
+            return
+        }
+
+        Ui.ok("\(tituloSucesso)  (\(TerminalCor.statusHttp(status)))")
+
+        if listaReservas {
             print(formatarListaReservas(texto))
+        } else if let dados = texto.data(using: .utf8),
+                  let objeto = try? JSONSerialization.jsonObject(with: dados) as? [String: Any] {
+            imprimirObjeto(objeto)
         } else {
-            print(formatar(texto))
+            Ui.item(formatar(texto))
+        }
+        Ui.vazio()
+    }
+
+    private static func imprimirObjeto(_ objeto: [String: Any]) {
+        let ordem = ["id", "nome", "email", "telefone", "perfil", "tipo", "capacidade",
+                     "usuarioId", "usuarioNome", "espacoId", "espacoNome",
+                     "data", "horaInicio", "horaFim", "status"]
+        var impressos = Set<String>()
+        for chave in ordem {
+            guard let valor = objeto[chave] else { continue }
+            Ui.info(rotuloCampo(chave), "\(valor)")
+            impressos.insert(chave)
+        }
+        for chave in objeto.keys.sorted() where !impressos.contains(chave) {
+            Ui.info(rotuloCampo(chave), "\(objeto[chave] ?? "")")
+        }
+    }
+
+    private static func rotuloCampo(_ chave: String) -> String {
+        switch chave {
+        case "id": return "Id"
+        case "nome": return "Nome"
+        case "email": return "Email"
+        case "telefone": return "Telefone"
+        case "perfil": return "Perfil"
+        case "tipo": return "Tipo"
+        case "capacidade": return "Capacidade"
+        case "usuarioId": return "Usuario id"
+        case "usuarioNome": return "Usuario"
+        case "espacoId": return "Espaco id"
+        case "espacoNome": return "Espaco"
+        case "data": return "Data"
+        case "horaInicio": return "Inicio"
+        case "horaFim": return "Fim"
+        case "status": return "Status"
+        default: return chave
         }
     }
 
@@ -321,10 +496,14 @@ private enum Cli {
 
     private static func pedirReferencia(rotulo: String, itens: [ItemSessao], dica: String) -> String? {
         if !itens.isEmpty {
-            print("\(rotulo)s desta sessao:")
+            Ui.vazio()
+            Ui.item("\(rotulo)s desta sessao:")
+            Ui.vazio()
             for (indice, item) in itens.enumerated() {
-                print("  \(indice + 1). \(item.nome) (\(item.id))")
+                Ui.item("\(indice + 1).  \(item.nome)")
+                Ui.item("    id: \(item.id)")
             }
+            Ui.vazio()
         }
         guard let bruto = pedir("\(rotulo) (\(dica))") else {
             return nil
@@ -380,11 +559,10 @@ private enum Cli {
 
     private static func pedir(_ rotulo: String, padrao: String? = nil) -> String? {
         if let padrao {
-            print("\(rotulo) (\(padrao)): ", terminator: "")
+            Ui.prompt("\(rotulo) (\(padrao)): ")
         } else {
-            print("\(rotulo): ", terminator: "")
+            Ui.prompt("\(rotulo): ")
         }
-        fflush(stdout)
         guard let linha = lerLinha()?.trimmingCharacters(in: .whitespacesAndNewlines) else {
             return nil
         }
@@ -463,11 +641,12 @@ private enum Cli {
     private static func formatarListaReservas(_ texto: String) -> String {
         guard let dados = texto.data(using: .utf8),
               let itens = try? JSONSerialization.jsonObject(with: dados) as? [[String: Any]] else {
-            return formatar(texto)
+            return "  " + formatar(texto)
         }
         if itens.isEmpty {
-            return "Nenhuma reserva encontrada."
+            return "  Nenhuma reserva encontrada."
         }
+
         var linhas: [String] = []
         for (indice, item) in itens.enumerated() {
             let id = item["id"] as? String ?? "-"
@@ -477,25 +656,52 @@ private enum Cli {
             let inicio = item["horaInicio"] as? String ?? "-"
             let fim = item["horaFim"] as? String ?? "-"
             let status = item["status"] as? String ?? "-"
-            linhas.append("\(indice + 1). [\(status)] \(espaco) | \(usuario) | \(data) \(inicio)-\(fim)")
-            linhas.append("   id: \(id)")
+
+            if indice > 0 {
+                linhas.append("")
+            }
+            let marca = TerminalCor.sucesso("[\(status)]")
+            linhas.append("  \(TerminalCor.negrito("\(indice + 1)."))  \(marca)  \(espaco)")
+            linhas.append("      \(TerminalCor.rotulo("Usuario"))   \(usuario)")
+            linhas.append("      \(TerminalCor.rotulo("Horario"))   \(data)  \(inicio) – \(fim)")
+            linhas.append("      \(TerminalCor.esmaecido("Id        \(id)"))")
         }
         return linhas.joined(separator: "\n")
     }
 
-    private static let ajuda = """
-    Locacao de Espacos Esportivos
-
-    Uso:
-      locacao-espacos servidor [--porta 8080] [--notificador email|fake] [--persistencia sqlite|memoria] [--banco locacao.sqlite]
-      locacao-espacos cli [--servidor URL]
-      locacao-espacos usuario cadastrar --nome NOME --email EMAIL --telefone TELEFONE [--perfil CLIENTE|ADMIN] [--servidor URL]
-      locacao-espacos espaco cadastrar --nome NOME --tipo TIPO --capacidade N [--servidor URL]
-      locacao-espacos reserva criar --usuario UUID --espaco UUID --data AAAA-MM-DD --inicio HH:MM --fim HH:MM [--servidor URL]
-      locacao-espacos reserva listar [--servidor URL]
-
-    O cliente envia HTTP/JSON ao servidor. Suba o servidor antes dos outros comandos.
-    O modo cli abre um menu interativo: cadastrar usuario, cadastrar espaco, criar reserva e ver reservas.
-    Trocar --notificador email|fake ou --persistencia sqlite|memoria muda so o tipo concreto.
-    """
+    private static func imprimirAjuda() {
+        Ui.banner("Locacao de Espacos Esportivos")
+        Ui.vazio()
+        Ui.item("Uso")
+        Ui.vazio()
+        Ui.item("  locacao-espacos servidor")
+        Ui.item("      [--porta 8080]")
+        Ui.item("      [--notificador email|fake]")
+        Ui.item("      [--persistencia sqlite|memoria]")
+        Ui.item("      [--banco locacao.sqlite]")
+        Ui.vazio()
+        Ui.item("  locacao-espacos cli [--servidor URL]")
+        Ui.vazio()
+        Ui.item("  locacao-espacos usuario cadastrar")
+        Ui.item("      --nome NOME --email EMAIL --telefone TELEFONE")
+        Ui.item("      [--perfil CLIENTE|ADMIN] [--servidor URL]")
+        Ui.vazio()
+        Ui.item("  locacao-espacos espaco cadastrar")
+        Ui.item("      --nome NOME --tipo TIPO --capacidade N [--servidor URL]")
+        Ui.vazio()
+        Ui.item("  locacao-espacos reserva criar")
+        Ui.item("      --usuario UUID --espaco UUID")
+        Ui.item("      --data AAAA-MM-DD --inicio HH:MM --fim HH:MM [--servidor URL]")
+        Ui.vazio()
+        Ui.item("  locacao-espacos reserva listar [--servidor URL]")
+        Ui.vazio()
+        Ui.linha()
+        Ui.vazio()
+        Ui.item("O cliente fala HTTP/JSON com o servidor.")
+        Ui.item("Suba o servidor antes dos outros comandos.")
+        Ui.vazio()
+        Ui.item("Modo cli: menu interativo (usuario, espaco, reserva).")
+        Ui.item("--notificador / --persistencia trocam so o adaptador concreto.")
+        Ui.vazio()
+    }
 }

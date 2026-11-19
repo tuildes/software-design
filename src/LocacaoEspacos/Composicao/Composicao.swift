@@ -99,17 +99,33 @@ public func iniciarServidor(porta: UInt16, persistencia: ModoPersistencia, notif
 }
 
 private func anunciar(persistencia: ModoPersistencia, notificador: ModoNotificador) {
-    print("Locacao de Espacos Esportivos")
+    let largura = 56
+    let linha = TerminalCor.ciano(String(repeating: "=", count: largura))
+    let corte = TerminalCor.ciano(String(repeating: "─", count: largura))
+
+    print("")
+    print(linha)
+    print("  \(TerminalCor.titulo("Locacao de Espacos Esportivos"))")
+    print(linha)
+    print("")
+
     switch notificador {
     case .email:
-        print("Notificador: EmailNotificador")
+        print("  \(TerminalCor.rotulo("Notificador"))   \(TerminalCor.destaque("EmailNotificador"))")
     case .fake:
-        print("Notificador: NotificadorFake")
+        print("  \(TerminalCor.rotulo("Notificador"))   \(TerminalCor.destaque("NotificadorFake"))")
     }
     switch persistencia {
     case .memoria:
-        print("Persistencia: InMemoryRepositories")
+        print("  \(TerminalCor.rotulo("Persistencia"))  \(TerminalCor.verde("InMemory")) \(TerminalCor.esmaecido("(repositorios em memoria)"))")
     case .sqlite(let caminho):
-        print("Persistencia: SQLite \(caminho)")
+        print("  \(TerminalCor.rotulo("Persistencia"))  \(TerminalCor.verde("SQLite"))  \(caminho)")
     }
+
+    print("")
+    print(corte)
+    print("  \(TerminalCor.rotulo("Arquitetura"))   Hexagonal + Camadas + Repository")
+    print("  \(TerminalCor.rotulo("Adaptadores"))   trocaveis via flags da CLI")
+    print(corte)
+    print("")
 }
