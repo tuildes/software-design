@@ -1,10 +1,10 @@
 import Foundation
 
 final class ReservaController {
-    private let reservaService: ReservaService
+    private let reservaPort: ReservaPort
 
-    init(reservaService: ReservaService) {
-        self.reservaService = reservaService
+    init(reservaPort: ReservaPort) {
+        self.reservaPort = reservaPort
     }
 
     func criarReserva(corpo: Data) -> Resposta {
@@ -36,7 +36,7 @@ final class ReservaController {
             return respostaDeErro(400, "Periodo invalido")
         }
         do {
-            let reserva = try reservaService.realizarReserva(usuarioId: usuarioId, espacoId: espacoId, periodo: periodo)
+            let reserva = try reservaPort.realizarReserva(usuarioId: usuarioId, espacoId: espacoId, periodo: periodo)
             return Resposta(status: 201, corpo: json(resumo(reserva)))
         } catch let erro as ErroDeReserva {
             return respostaDeErro(erro.statusHttp, erro.mensagem)
@@ -47,7 +47,7 @@ final class ReservaController {
     }
 
     func listarReservas() -> Resposta {
-        let itens = reservaService.listarReservas().map(resumo)
+        let itens = reservaPort.listarReservas().map(resumo)
         return Resposta(status: 200, corpo: json(itens))
     }
 }

@@ -28,6 +28,8 @@ func montarNucleo(persistencia: ModoPersistencia, notificador: ModoNotificador) 
     let usuarios: UsuarioRepository
     let espacos: EspacoEsportivoRepository
     let reservas: ReservaRepository
+    let unidade: UnidadeDeTrabalho
+
     switch persistencia {
     case .memoria:
         let usuariosMemoria = InMemoryUsuarioRepository()
@@ -36,6 +38,7 @@ func montarNucleo(persistencia: ModoPersistencia, notificador: ModoNotificador) 
         usuarios = usuariosMemoria
         espacos = espacosMemoria
         reservas = reservasMemoria
+        unidade = UnidadeDeTrabalhoImediata()
     case .sqlite(let caminho):
         let banco = try BancoSqlite(caminho: caminho)
         let usuariosSqlite = SqliteUsuarioRepository(banco: banco)
@@ -44,6 +47,7 @@ func montarNucleo(persistencia: ModoPersistencia, notificador: ModoNotificador) 
         usuarios = usuariosSqlite
         espacos = espacosSqlite
         reservas = reservasSqlite
+        unidade = SqliteUnidadeDeTrabalho(banco: banco)
     }
 
     let canal: Notificador
@@ -60,7 +64,8 @@ func montarNucleo(persistencia: ModoPersistencia, notificador: ModoNotificador) 
         reservaRepository: reservas,
         espacoRepository: espacos,
         usuarioRepository: usuarios,
-        notificador: canal
+        notificador: canal,
+        unidadeDeTrabalho: unidade
     )
     return Nucleo(
         usuarioService: usuarioService,
@@ -77,9 +82,9 @@ func montarServidor(porta: UInt16, persistencia: ModoPersistencia, notificador: 
     let nucleo = try montarNucleo(persistencia: persistencia, notificador: notificador)
     return ServidorHttp(
         porta: porta,
-        usuarios: UsuarioController(usuarioService: nucleo.usuarioService),
-        espacos: EspacoEsportivoController(espacoService: nucleo.espacoService),
-        reservas: ReservaController(reservaService: nucleo.reservaService)
+        usuarios: UsuarioController(usuarioPort: nucleo.usuarioService),
+        espacos: EspacoEsportivoController(espacoPort: nucleo.espacoService),
+        reservas: ReservaController(reservaPort: nucleo.reservaService)
     )
 }
 
@@ -124,7 +129,8 @@ private func anunciar(persistencia: ModoPersistencia, notificador: ModoNotificad
 
     print("")
     print(corte)
-    print("  \(TerminalCor.rotulo("Arquitetura"))   Hexagonal + Camadas + Repository")
+    print("  \(TerminalCor.rotulo("Arquitetura"))   Monolito modular + Hexagonal + Repository")
+    print("  \(TerminalCor.rotulo("Modulos"))       Reservas | Espacos | Usuarios | Notificacao")
     print("  \(TerminalCor.rotulo("Adaptadores"))   trocaveis via flags da CLI")
     print(corte)
     print("")

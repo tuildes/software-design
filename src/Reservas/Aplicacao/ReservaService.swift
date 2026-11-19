@@ -1,21 +1,24 @@
 import Foundation
 
-final class ReservaService {
+final class ReservaService: ReservaPort {
     private let reservaRepository: ReservaRepository
     private let espacoRepository: EspacoEsportivoRepository
     private let usuarioRepository: UsuarioRepository
     private let notificador: Notificador
+    private let unidadeDeTrabalho: UnidadeDeTrabalho
 
     init(
         reservaRepository: ReservaRepository,
         espacoRepository: EspacoEsportivoRepository,
         usuarioRepository: UsuarioRepository,
-        notificador: Notificador
+        notificador: Notificador,
+        unidadeDeTrabalho: UnidadeDeTrabalho = UnidadeDeTrabalhoImediata()
     ) {
         self.reservaRepository = reservaRepository
         self.espacoRepository = espacoRepository
         self.usuarioRepository = usuarioRepository
         self.notificador = notificador
+        self.unidadeDeTrabalho = unidadeDeTrabalho
     }
 
     func realizarReserva(usuarioId: UUID, espacoId: UUID, periodo: PeriodoHorario) throws -> Reserva {
@@ -39,15 +42,18 @@ final class ReservaService {
             throw ErroDeReserva.espacoIndisponivelOuRestricaoViolada
         }
 
-        let existentes = reservaRepository.listarPorEspacoEData(espacoId, periodo.data)
-        for existente in existentes {
-            if existente.conflitaCom(periodo) {
-                throw ErroDeReserva.horarioJaReservado
+        let novaReserva: Reserva = try unidadeDeTrabalho.emTransacao {
+            let existentes = reservaRepository.listarPorEspacoEData(espacoId, periodo.data)
+            for existente in existentes {
+                if existente.conflitaCom(periodo) {
+                    throw ErroDeReserva.horarioJaReservado
+                }
             }
+            let criada = Reserva(espacoEsportivo: espaco, usuario: usuario, periodoHorario: periodo)
+            reservaRepository.salvar(criada)
+            return criada
         }
 
-        let novaReserva = Reserva(espacoEsportivo: espaco, usuario: usuario, periodoHorario: periodo)
-        reservaRepository.salvar(novaReserva)
         notificador.notificar(
             destinatario: usuario.email,
             assunto: "Reserva Confirmada",

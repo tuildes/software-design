@@ -1,10 +1,10 @@
 import Foundation
 
 final class UsuarioController {
-    private let usuarioService: UsuarioService
+    private let usuarioPort: UsuarioPort
 
-    init(usuarioService: UsuarioService) {
-        self.usuarioService = usuarioService
+    init(usuarioPort: UsuarioPort) {
+        self.usuarioPort = usuarioPort
     }
 
     func cadastrarUsuario(corpo: Data) -> Resposta {
@@ -23,7 +23,7 @@ final class UsuarioController {
         } else {
             perfil = .cliente
         }
-        let usuario = usuarioService.cadastrarUsuario(nome: nome, email: email, telefone: telefone, perfil: perfil)
+        let usuario = usuarioPort.cadastrarUsuario(nome: nome, email: email, telefone: telefone, perfil: perfil)
         return Resposta(
             status: 201,
             corpo: json([

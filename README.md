@@ -19,7 +19,7 @@ swift run locacao-espacos cli --servidor http://127.0.0.1:8080
 ```
 
 Guia prático (por que API, endpoints, como rodar e apresentar): **[`docs/api.md`](docs/api.md)**.  
-Estrutura do código: **[`src/README.md`](src/README.md)**.
+Estrutura módulo-first em `src/`: **[`src/README.md`](src/README.md)**.
 
 ## Documentação
 

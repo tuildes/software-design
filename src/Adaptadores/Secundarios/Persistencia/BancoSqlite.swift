@@ -33,10 +33,16 @@ final class BancoSqlite {
         }
     }
 
-    func transacao(_ bloco: () -> Void) {
+    func transacao<T>(_ bloco: () throws -> T) rethrows -> T {
         _ = executar("BEGIN")
-        bloco()
-        _ = executar("COMMIT")
+        do {
+            let resultado = try bloco()
+            _ = executar("COMMIT")
+            return resultado
+        } catch {
+            _ = executar("ROLLBACK")
+            throw error
+        }
     }
 
     @discardableResult

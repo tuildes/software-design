@@ -1,10 +1,10 @@
 import Foundation
 
 final class EspacoEsportivoController {
-    private let espacoService: EspacoEsportivoService
+    private let espacoPort: EspacoPort
 
-    init(espacoService: EspacoEsportivoService) {
-        self.espacoService = espacoService
+    init(espacoPort: EspacoPort) {
+        self.espacoPort = espacoPort
     }
 
     func cadastrarEspaco(corpo: Data) -> Resposta {
@@ -14,7 +14,7 @@ final class EspacoEsportivoController {
               let capacidade = inteiroJson(objeto["capacidade"]), capacidade > 0 else {
             return respostaDeErro(400, "Requisicao invalida")
         }
-        let espaco = espacoService.cadastrarEspaco(nome: nome, tipo: tipo, capacidade: capacidade)
+        let espaco = espacoPort.cadastrarEspaco(nome: nome, tipo: tipo, capacidade: capacidade)
         return Resposta(
             status: 201,
             corpo: json([

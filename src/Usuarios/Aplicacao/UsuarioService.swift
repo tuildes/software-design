@@ -1,6 +1,6 @@
 import Foundation
 
-final class UsuarioService {
+final class UsuarioService: UsuarioPort {
     private let usuarioRepository: UsuarioRepository
 
     init(usuarioRepository: UsuarioRepository) {

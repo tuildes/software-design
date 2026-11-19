@@ -1,6 +1,6 @@
 import Foundation
 
-final class EspacoEsportivoService {
+final class EspacoEsportivoService: EspacoPort {
     private let espacoRepository: EspacoEsportivoRepository
 
     init(espacoRepository: EspacoEsportivoRepository) {

@@ -26,14 +26,17 @@ A CLI **não** é a regra de negócio: ela é só um cliente HTTP. Subir o servi
 [CLI / curl / futuro Web]
         │  HTTP + JSON
         ▼
-  Adaptadores primários (controllers)
+  Adaptadores/Primarios (controllers → *Port)
         │
         ▼
-  Aplicação + Domínio (regras)
+  Módulos: Reservas | Espacos | Usuarios | Notificacao
+  (Dominio → Aplicacao → Portas)
         │
         ▼
-  Adaptadores secundários (SQLite / Fake e-mail)
+  Adaptadores/Secundarios (SQLite / Fake e-mail)
 ```
+
+Árvore do código: [`src/README.md`](../src/README.md).
 
 ---
 

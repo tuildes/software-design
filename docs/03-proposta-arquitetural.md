@@ -178,16 +178,18 @@ O banco não é ator: é recurso da infraestrutura.
 
 ## 8. Documentação de API
 
+Detalhamento operacional (corpos, curl, como rodar): [`api.md`](api.md).
+
+### 8.1 Implementado no protótipo (fatia vertical)
+
 | Método | Endpoint | Descrição | RF |
 | :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/usuarios` | Cadastrar usuário | RF10 |
+| `POST` | `/api/v1/espacos` | Cadastrar espaço | RF01 |
 | `POST` | `/api/v1/reservas` | Criar reserva; notifica se confirmada | RF02, RF05, RF06 |
-| `DELETE` | `/api/v1/reservas/{id}` | Cancelar reserva ativa; notifica | RF03, RF06 |
-| `GET` | `/api/v1/espacos/{id}/disponibilidade?data=YYYY-MM-DD` | Horários disponíveis | RF07 |
-| `GET` | `/api/v1/espacos/disponiveis?data=&inicio=&fim=` | Espaços livres no intervalo | RF08 |
-| `POST` | `/api/v1/espacos` | Cadastrar espaço (Admin) | RF01 |
-| `PATCH` | `/api/v1/espacos/{id}/manutencao` | Manutenção (Admin) | RF04 |
-| `PUT` | `/api/v1/espacos/{id}/restricoes` | Restrições de uso (Admin) | RF09 |
-| `POST` | `/api/v1/usuarios` | Cadastrar usuário (Admin → `UsuarioController` → `UsuarioService`) | RF10 |
+| `GET` | `/api/v1/reservas` | Listar reservas | — |
+
+Persistência do protótipo: **SQLite** (banco relacional único) ou InMemory; notificação `Email` / `Fake`.
 
 **Exemplo — criar reserva:**
 
@@ -205,3 +207,15 @@ Content-Type: application/json
 ```
 
 * `201` — reserva criada · `409` — conflito / indisponível / restrição · `403` — usuário inapto.
+
+### 8.2 Desenho alvo (ainda não exposto no HTTP do protótipo)
+
+| Método | Endpoint | Descrição | RF |
+| :--- | :--- | :--- | :--- |
+| `DELETE` | `/api/v1/reservas/{id}` | Cancelar reserva ativa; notifica | RF03, RF06 |
+| `GET` | `/api/v1/espacos/{id}/disponibilidade?data=YYYY-MM-DD` | Horários disponíveis | RF07 |
+| `GET` | `/api/v1/espacos/disponiveis?data=&inicio=&fim=` | Espaços livres no intervalo | RF08 |
+| `PATCH` | `/api/v1/espacos/{id}/manutencao` | Manutenção (Admin) | RF04 |
+| `PUT` | `/api/v1/espacos/{id}/restricoes` | Restrições de uso (Admin) | RF09 |
+
+Parte da orquestração já existe nos `*Service` / domínio (ex.: manutenção e restrições em `EspacoEsportivoService`); faltam sobretudo rotas nos adaptadores primários.

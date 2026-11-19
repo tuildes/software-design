@@ -4,9 +4,9 @@ import XCTest
 final class ControllersTests: XCTestCase {
     func testCadastroEReservaPeloController() throws {
         let nucleo = try montarNucleo(persistencia: .memoria, notificador: .fake)
-        let usuarios = UsuarioController(usuarioService: nucleo.usuarioService)
-        let espacos = EspacoEsportivoController(espacoService: nucleo.espacoService)
-        let reservas = ReservaController(reservaService: nucleo.reservaService)
+        let usuarios = UsuarioController(usuarioPort: nucleo.usuarioService)
+        let espacos = EspacoEsportivoController(espacoPort: nucleo.espacoService)
+        let reservas = ReservaController(reservaPort: nucleo.reservaService)
 
         let respostaUsuario = usuarios.cadastrarUsuario(corpo: try corpoJson([
             "nome": "Ana",
@@ -54,8 +54,8 @@ final class ControllersTests: XCTestCase {
 
     func testControllerRecusaFormatoEUsuarioInapto() throws {
         let nucleo = try montarNucleo(persistencia: .memoria, notificador: .fake)
-        let usuarios = UsuarioController(usuarioService: nucleo.usuarioService)
-        let reservas = ReservaController(reservaService: nucleo.reservaService)
+        let usuarios = UsuarioController(usuarioPort: nucleo.usuarioService)
+        let reservas = ReservaController(reservaPort: nucleo.reservaService)
         XCTAssertEqual(usuarios.cadastrarUsuario(corpo: Data("{}".utf8)).status, 400)
         XCTAssertEqual(reservas.criarReserva(corpo: Data("nao-json".utf8)).status, 400)
 
@@ -65,7 +65,7 @@ final class ControllersTests: XCTestCase {
             "telefone": "1",
             "perfil": "ADMIN",
         ]))
-        let espaco = EspacoEsportivoController(espacoService: nucleo.espacoService).cadastrarEspaco(corpo: try corpoJson([
+        let espaco = EspacoEsportivoController(espacoPort: nucleo.espacoService).cadastrarEspaco(corpo: try corpoJson([
             "nome": "Quadra 1",
             "tipo": "society",
             "capacidade": 10,
@@ -86,7 +86,7 @@ final class ControllersTests: XCTestCase {
         let usuario = nucleo.usuarioService.cadastrarUsuario(nome: "Ana", email: "ana@exemplo.com", telefone: "1", perfil: .cliente)
         let espaco = nucleo.espacoService.cadastrarEspaco(nome: "Quadra 1", tipo: "poliesportiva", capacidade: 10)
         try nucleo.espacoService.agendarManutencao(espacoId: espaco.id, periodo: periodo("2026-12-01", "19:00", "20:00"))
-        let reservas = ReservaController(reservaService: nucleo.reservaService)
+        let reservas = ReservaController(reservaPort: nucleo.reservaService)
         let resposta = reservas.criarReserva(corpo: try corpoJson([
             "usuarioId": usuario.id.uuidString,
             "espacoId": espaco.id.uuidString,
