@@ -12,14 +12,12 @@ Este documento identifica os conceitos do domínio de locação de espaços espo
 
 ## 1. Conceitos e Módulos do Domínio
 
-O sistema é um **Monólito Modular**. Três módulos são de **domínio/negócio**; um quarto é de **integração** (não faz parte do núcleo de domínio).
+Dentro do **Monólito Modular**, o sistema é organizado em quatro módulos coesos que se comunicam por chamadas locais e contratos claros:
 
-| Módulo | Tipo | Conceitos principais | RFs |
-| :--- | :--- | :--- | :--- |
-| **Espaços Esportivos** | Domínio | `EspacoEsportivo`, `RestricaoDeUso` | RF01, RF04, RF09 (colabora em RF07/RF08) |
-| **Reservas** | Domínio (núcleo) | `Reserva`, `PeriodoHorario` | RF02, RF03, RF05, RF07, RF08 |
-| **Usuários** | Domínio | `Usuario` | RF10 (e pré-condição de RF02) |
-| **Notificação** | Integração | Porta `Notificador`, `NotificacaoService`, adaptadores | RF06 |
+1. **Módulo de Espaços Esportivos:** Gestão do cadastro de quadras/espaços, restrições de uso e períodos de manutenção (RF01, RF04, RF07, RF08, RF09).
+2. **Módulo de Reservas (Core Principal):** Orquestração do agendamento, checagem de conflitos de horário, cancelamentos e consultas de disponibilidade (RF02, RF03, RF05).
+3. **Módulo de Usuários:** Gestão de cadastro e validação de aptidão de clientes e administradores (RF10).
+4. **Módulo de Notificação (Integração Externa):** Contrato (`Notificador`) e adaptadores responsáveis por enviar confirmações e avisos de cancelamento (RF06).
 
 ### Por que esses módulos (e não outros)?
 

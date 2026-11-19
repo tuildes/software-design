@@ -6,9 +6,12 @@
 
 ## 1. Contexto do Sistema
 
-Em ambientes universitários, clubes ou complexos esportivos, a locação de quadras e espaços físicos costuma enfrentar problemas recorrentes como conflitos de agendamento no mesmo horário (*double booking*), dificuldade em visualizar horários ou espaços livres, reservas feitas em períodos de manutenção e aplicação inconsistente de regras de uso específicas de cada espaço.
+Em ambientes de academias, clubes ou complexos esportivos, a locação de quadras e espaços físicos costuma enfrentar problemas recorrentes como conflitos de agendamento no mesmo horário (*double booking*), dificuldade em visualizar horários ou espaços livres, reservas feitas em períodos de manutenção e aplicação inconsistente de regras de uso específicas de cada espaço.
 
 O sistema proposto centraliza o controle de espaços esportivos, regras de utilização, agendas de reserva, bloqueios de manutenção e notificações aos usuários, oferecendo uma base coesa e preparada para evoluir sem acoplamento rígido a tecnologias de interface, banco de dados ou provedores de envio de mensagens.
+
+
+**"Como este sistema deve ser organizado para atender aos requisitos atuais e permitir sua evolução sem gerar dependências desnecessárias?"** O sistema será estruturado seguindo o estilo Cliente-Servidor na fronteira de acesso, organizado internamente como um Monólito Modular com Arquitetura Hexagonal no núcleo de cada domínio e Repository Architecture (banco de dados relacional centralizado) como fonte única da verdade. Essa combinação garante consistência transacional forte contra reservas duplicadas, isola integrações externas por meio de portas e adaptadores para permitir a troca ou adição de canais de notificação sem impactar o domínio e mantém a complexidade operacional compatível com uma equipe reduzida de 3 pessoas.
 
 ---
 
@@ -46,9 +49,9 @@ O sistema proposto centraliza o controle de espaços esportivos, regras de utili
 
 ## 4. Restrições Relevantes
 
-1. **R01 — Evolução desacoplada:** permitir evolução do projeto sem gerar dependências desnecessárias entre regras de negócio e infraestrutura.
-2. **R02 — Equipe reduzida:** projeto desenvolvido e mantido por apenas 3 integrantes.
-3. **R03 — Tempo e recursos limitados:** necessidade de manter implantação simples e baixo custo operacional.
+1. **R01 — Evolução desacoplada:** Permitir evolução do projeto sem gerar dependências desnecessárias entre regras de negócio e infraestrutura.
+2. **R02 — Equipe reduzida:** Projeto desenvolvido e mantido por apenas 3 integrantes.
+3. **R03 — Tempo e recursos limitados:** necessidade de manter implantação simples e com baixo custo operacional.
 4. **R04 — Consistência dos dados:** o sistema deve garantir consistência satisfatória dos dados de agenda e disponibilidade (sem conflitos de reserva).
 5. **R05 — Testabilidade:** as regras críticas de negócio devem ser facilmente testáveis de forma automatizada.
 
