@@ -20,7 +20,7 @@ node "Servidor de Aplicacao (Monolito Modular - 1 Deploy)" as Servidor {
     interface "UsuarioPort" as PUsuario
 
     component "Modulo de Reservas\n(ReservaService, Reserva, PeriodoHorario)" as ModReservas
-    component "Modulo de Espacos Esportivos\n(EspacoEsportivoService, EspacoEsportivo, RestricaoUso)" as ModEspacos
+    component "Modulo de Espacos Esportivos\n(EspacoEsportivoService, EspacoEsportivo, RestricaoDeUso)" as ModEspacos
     component "Modulo de Usuarios\n(UsuarioService, Usuario)" as ModUsuarios
 
     interface "ReservaRepository" as IReservaRepo

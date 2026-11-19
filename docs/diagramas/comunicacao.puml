@@ -9,7 +9,9 @@ object ":EspacoEsportivoRepository" as ER
 object ":ReservaRepository" as RR
 object "u : Usuario" as U
 object "e : EspacoEsportivo" as E
+object "rUso : RestricaoDeUso" as RU
 object "rExistente : Reserva" as RE
+object "pExistente : PeriodoHorario" as PH
 object "novaReserva : Reserva" as NR
 object ":Notificador" as N
 
@@ -20,8 +22,10 @@ RS --> UR : "1.1.1: buscarPorId(usuarioId)"
 RS --> U : "1.1.2: podeRealizarReserva()"
 RS --> ER : "1.1.3: buscarPorId(espacoId)"
 RS --> E : "1.1.4: estaDisponivelParaReserva(periodo)\n1.1.5: atendeRestricoes(u, periodo)"
+E --> RU : "1.1.5.1: validar(u, periodo)"
 RS --> RR : "1.1.6: listarPorEspacoEData(espacoId, data)\n1.1.9: salvar(novaReserva)"
 RS --> RE : "1.1.7: conflitaCom(periodo)"
+RE --> PH : "1.1.7.1: sobrepoe(periodo)"
 RS --> NR : "1.1.8: new(e, u, periodo)"
 RS --> N : "1.1.10: notificar(email, assunto, mensagem)"
 

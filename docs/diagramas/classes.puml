@@ -42,7 +42,7 @@ package "Aplicacao (Use Cases / Services)" {
     + cadastrarEspaco(nome : String, tipo : String, capacidade : int) : EspacoEsportivo
     + agendarManutencao(espacoId : UUID, periodo : PeriodoHorario) : void
     + liberarManutencao(espacoId : UUID) : void
-    + definirRestricoes(espacoId : UUID, restricoes : List<RestricaoUso>) : void
+    + definirRestricoes(espacoId : UUID, restricoes : List<RestricaoDeUso>) : void
   }
 
   class UsuarioService {
@@ -80,12 +80,12 @@ package "Dominio (Core)" {
     - capacidade : int
     - emManutencao : boolean
     - periodosManutencao : List<PeriodoHorario>
-    - restricoesUso : List<RestricaoUso>
+    - restricoesDeUso : List<RestricaoDeUso>
     + estaDisponivelParaReserva(periodo : PeriodoHorario) : boolean
     + atendeRestricoes(usuario : Usuario, periodo : PeriodoHorario) : boolean
     + iniciarManutencao(periodo : PeriodoHorario) : void
     + encerrarManutencao() : void
-    + adicionarRestricao(restricao : RestricaoUso) : void
+    + adicionarRestricao(restricao : RestricaoDeUso) : void
   }
 
   class Reserva {
@@ -107,7 +107,8 @@ package "Dominio (Core)" {
     + ehValido() : boolean
   }
 
-  class RestricaoUso <<ValueObject>> {
+  class RestricaoDeUso {
+    - id : UUID
     - descricao : String
     - duracaoMaximaMinutos : int
     - antecedenciaMinimaHoras : int
@@ -175,7 +176,7 @@ EspacoEsportivo "1" -- "0..*" Reserva : recebe >
 Reserva *-- "1" PeriodoHorario
 Reserva --> StatusReserva
 Usuario --> TipoPerfil
-EspacoEsportivo *-- "0..*" RestricaoUso
+EspacoEsportivo *-- "0..*" RestricaoDeUso
 EspacoEsportivo *-- "0..*" PeriodoHorario : manutencoes
 
 ' Implementacoes dos Adaptadores

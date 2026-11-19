@@ -1,7 +1,5 @@
 # 4. Alternativas Arquiteturais e Trade-offs
 
-Foram comparadas duas alternativas além da solução adotada no documento de proposta: **Cliente–Servidor + Monólito Modular com Arquitetura Hexagonal, Organização em Camadas e Repository Architecture** (banco relacional único).
-
 ---
 
 ## 1. Alternativa 1 — Monólito Simples (sem portas / acoplado)

@@ -3,13 +3,13 @@
 ## 1. Organização Arquitetural Explícita
 
 ```text
-Cliente–Servidor
+Estilo Cliente-Servidor (Acesso HTTP/REST ou CLI)
   +
-Arquitetura Hexagonal (Ports & Adapters)
+Padrão Monólito Modular (Divisão lógica em 4 módulos em 1 único processo/deploy)
   +
-Organização em Camadas
+Padrão Arquitetura Hexagonal / Ports & Adapters (Isolamento do núcleo e DIP)
   +
-Repository Architecture (banco relacional único)
+Estilo Repository Architecture (Banco relacional centralizado como fonte única da verdade)
 ```
 
 > O servidor é implantado como **monólito modular** (1 processo/deploy, módulos Reservas / Espaços / Usuários + integração de Notificação). Isso é a forma de empacotamento; a organização arquitetural nomeada acima é o que estrutura acesso, isolamento do núcleo, camadas e persistência.
@@ -24,7 +24,7 @@ Repository Architecture (banco relacional único)
 ### 1.2 Arquitetura Hexagonal — como aparece
 
 * O **núcleo** (entidades + `*Service`) não depende de HTTP, SQL/ORM nem SMTP.
-* **Adaptadores primários (driving):** `ReservaController`, `EspacoEsportivoController` — conduzem o caso de uso a partir do cliente.
+* **Adaptadores primários (driving):** `ReservaController`, `EspacoEsportivoController`, `UsuarioController` — conduzem o caso de uso a partir do cliente.
 * **Portas secundárias:** `ReservaRepository`, `EspacoEsportivoRepository`, `UsuarioRepository`, `Notificador`.
 * **Adaptadores secundários (driven):** Postgres/InMemory e `EmailNotificador` / `NotificadorFake`.
 * Dependências apontam **de fora para o centro** (DIP): trocar e-mail por WhatsApp ou Fake não altera `Reserva` nem o fluxo de `realizarReserva`.
@@ -58,12 +58,11 @@ Dentro do hexágono, o código ainda se organiza em camadas lógicas:
         ▼
 ┌────── Servidor (Monólito Modular, 1 deploy) ──────────────────────────────┐
 │  Adaptadores primários (Apresentação)                                     │
-│    ReservaController · EspacoEsportivoController                          │
+│    ReservaController · EspacoEsportivoController · UsuarioController      │
 │         │                                                                 │
 │         ▼  Portas primárias / Services                                    │
 │  ┌──── Núcleo Hexagonal (Camadas Aplicação/Domínio) ──────────────────┐ │
 │  │  Reservas | Espaços | Usuários                                      │ │
-│  │  NotificacaoService (integração) → porta Notificador                │ │
 │  │  Portas: *Repository, Notificador                                   │ │
 │  └───────────┬──────────────────────────────┬──────────────────────────┘ │
 │              ▼                              ▼                            │
@@ -85,10 +84,10 @@ Dentro do hexágono, o código ainda se organiza em camadas lógicas:
 | **Cliente (Web / CLI)** | Lado cliente | Inicia comandos/consultas; consome JSON. |
 | **`ReservaController`** | Adaptador primário / apresentação | Criar/cancelar reserva e consultas de disponibilidade; só encaminha ao `ReservaService`. |
 | **`EspacoEsportivoController`** | Adaptador primário / apresentação | Cadastro, manutenção e restrições; encaminha ao `EspacoEsportivoService`. |
+| **`UsuarioController`** | Adaptador primário / apresentação | Cadastro de usuários (RF10); encaminha ao `UsuarioService`. |
 | **`ReservaService`** | Núcleo · módulo Reservas | Orquestra o caso de uso principal (regras + portas + notificação). |
 | **`EspacoEsportivoService`** | Núcleo · módulo Espaços | Cadastro, manutenção, `RestricaoDeUso`. |
-| **`UsuarioService`** | Núcleo · módulo Usuários | Cadastro/busca (RF10), sem `UsuarioController` dedicado. |
-| **`NotificacaoService`** | Integração no núcleo | Dispara aviso via porta `Notificador`. |
+| **`UsuarioService`** | Núcleo · módulo Usuários | Cadastro/busca de usuários (RF10). |
 | **Entidades / VO** | Domínio | `Reserva`, `EspacoEsportivo`, `RestricaoDeUso`, `Usuario`, `PeriodoHorario`. |
 | **Portas `*Repository` / `Notificador`** | Limite hexagonal | Contratos do núcleo; implementações na infraestrutura. |
 | **Adaptadores Postgres / InMemory / Email / Fake** | Infraestrutura | Persistência e envio real/simulado. |
@@ -142,7 +141,7 @@ Cliente
 | Adaptador primário ↔ Service | **Chamada local** | Controller só conduz o caso de uso ao núcleo. |
 | Entre módulos de domínio | **In-process** | Mesma transação local; sem rede interna. |
 | Núcleo ↔ Persistência | **Porta `*Repository` + SQL ACID** | Repository Architecture + Repository Pattern; ASR1. |
-| Núcleo ↔ Notificação | **Porta `Notificador` via `NotificacaoService`** | Hexágono: canal substituível (ASR2). |
+| Núcleo ↔ Notificação | **Porta `Notificador`** | Hexágono: canal substituível (ASR2). |
 
 ### Fluxo principal — Realizar Reserva (como a arquitetura aparece)
 
@@ -152,7 +151,7 @@ Cliente
 4. **Service → `EspacoEsportivoRepository` / `estaDisponivelParaReserva` / `atendeRestricoes`** — módulo Espaços, in-process.
 5. **Service → `listarPorEspacoEData` + `conflitaCom`** — RF05 no núcleo.
 6. **Service → `salvar(novaReserva)`** — Repository Architecture (transação no banco único).
-7. **Service → `NotificacaoService` → `Notificador`** — adaptador secundário (RF06).
+7. **Service → `Notificador`** — adaptador secundário (RF06).
 8. **Controller → Cliente** — `201` / `403` / `409` em JSON.
 
 ---
@@ -188,7 +187,7 @@ O banco não é ator: é recurso da infraestrutura.
 | `POST` | `/api/v1/espacos` | Cadastrar espaço (Admin) | RF01 |
 | `PATCH` | `/api/v1/espacos/{id}/manutencao` | Manutenção (Admin) | RF04 |
 | `PUT` | `/api/v1/espacos/{id}/restricoes` | Restrições de uso (Admin) | RF09 |
-| `POST` | `/api/v1/usuarios` | Cadastrar usuário (Admin → `UsuarioService`) | RF10 |
+| `POST` | `/api/v1/usuarios` | Cadastrar usuário (Admin → `UsuarioController` → `UsuarioService`) | RF10 |
 
 **Exemplo — criar reserva:**
 
@@ -206,14 +205,3 @@ Content-Type: application/json
 ```
 
 * `201` — reserva criada · `409` — conflito / indisponível / restrição · `403` — usuário inapto.
-
----
-
-## 9. Síntese — a combinação no realizar reserva
-
-1. **Cliente–Servidor:** `POST` no cliente; decisão e resposta no servidor.
-2. **Hexagonal:** controller e repositórios/notificador são adaptadores; regras ficam no núcleo atrás de portas.
-3. **Camadas:** o pedido desce Apresentação → Aplicação/Domínio → Infraestrutura.
-4. **Repository Architecture:** conflito e gravação usam o banco relacional único, na mesma transação.
-
-Essa combinação atende ASR1 (consistência), ASR2 (troca de notificação via porta) e ASR3 (testes com Fake/InMemory; um deploy modular).

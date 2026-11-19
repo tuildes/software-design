@@ -27,101 +27,151 @@ Dentro do **Monólito Modular**, o sistema é organizado em quatro módulos coes
 
 ---
 
-## 2. Classes e Responsabilidades
+## 2. Classes, Interfaces e Responsabilidades
 
-### 2.1 Domínio — entidades e value objects
+### 2.1 Domínio — Entidades, Objetos de Valor e Enums
 
 #### `EspacoEsportivo` (Entidade)
 
-* **Dados:** `id`, `nome`, `tipo`, `capacidade`, `emManutencao`, `periodosManutencao`, referência às `RestricaoDeUso` associadas.
-* **Responsabilidades:** decidir se o espaço pode ser reservado em um período (`estaDisponivelParaReserva`), verificar se atende às restrições (`atendeRestricoes`), iniciar/encerrar manutenção e associar restrições.
-* **Por que classe separada:** representa o agregado físico/operacional do negócio (quadra/espaço). Manutenção e restrições pertencem ao ciclo de vida do espaço, não da reserva.
+* **Atributos:** `id: UUID`, `nome: String`, `tipo: String`, `capacidade: int`, `emManutencao: boolean`, `periodosManutencao: List<PeriodoHorario>`, `restricoesDeUso: List<RestricaoDeUso>`.
+* **Métodos:** `estaDisponivelParaReserva(periodo: PeriodoHorario): boolean`, `atendeRestricoes(usuario: Usuario, periodo: PeriodoHorario): boolean`, `iniciarManutencao(periodo: PeriodoHorario): void`, `encerrarManutencao(): void`, `adicionarRestricao(restricao: RestricaoDeUso): void`.
+* **Por que a classe existe:** Representa o agregado físico e operacional do negócio (quadra/espaço); manutenção e restrições pertencem ao ciclo de vida do espaço, não da reserva.
 
 #### `RestricaoDeUso` (Entidade)
 
-* **Dados:** `id`, `descricao`, `duracaoMaximaMinutos`, `antecedenciaMinimaHoras`, `apenasUsuariosAutorizados` (e demais parâmetros de política que o espaço possa exigir).
-* **Responsabilidades:** `validar(usuario, periodo)` — avaliar se uma intenção de reserva respeita esta restrição.
-* **Por que entidade (e não Value Object):** a restrição **pode ser alterada** ao longo do tempo (RF09) e possui **identidade independente** do restante do modelo (pode ser reutilizada, versionada ou reatribuída a espaços). Tratar como VO imutável “embutido” no espaço dificultaria mudanças independentes e rastreio.
-* **Relação:** `EspacoEsportivo` conhece suas restrições e delega a validação detalhada a cada `RestricaoDeUso` (ainda Information Expert em dois níveis).
+* **Atributos:** `id: UUID`, `descricao: String`, `duracaoMaximaMinutos: int`, `antecedenciaMinimaHoras: int`, `apenasUsuariosAutorizados: boolean`.
+* **Métodos:** `validar(usuario: Usuario, periodo: PeriodoHorario): boolean`.
+* **Por que a classe existe (e por que é Entidade, não Value Object):** Avalia se uma intenção de reserva respeita uma política de uso do espaço. É Entidade porque **pode ser alterada** ao longo do tempo (RF09) e possui **identidade independente** (podendo ser reutilizada, versionada ou reatribuída a espaços). `EspacoEsportivo` conhece suas restrições e delega a validação detalhada a cada `RestricaoDeUso` (Information Expert em dois níveis).
 
 #### `Reserva` (Entidade)
 
-* **Dados:** `id`, `espacoEsportivo`, `usuario`, `periodoHorario`, `status` (`CONFIRMADA` \| `CANCELADA`).
-* **Responsabilidades:** `cancelar()`, `estaAtiva()`, `conflitaCom(periodo)`.
-* **Por que classe separada:** é o registro de compromisso de agenda; o estado (`status`) e a noção de conflito ativo pertencem a ela, não ao controller nem ao repositório.
-* **Nomenclatura:** usa-se `conflitaCom` (genérico). O critério interno pode evoluir (sobreposição simples, folga entre slots, etc.) sem forçar renomeação da API do domínio.
+* **Atributos:** `id: UUID`, `espacoEsportivo: EspacoEsportivo`, `usuario: Usuario`, `periodoHorario: PeriodoHorario`, `status: StatusReserva`.
+* **Métodos:** `cancelar(): void`, `estaAtiva(): boolean`, `conflitaCom(outroPeriodo: PeriodoHorario): boolean`.
+* **Por que a classe existe:** É o registro de compromisso de agenda; o ciclo de vida do estado (`status`) e a regra de conflito ativo (`conflitaCom`, nomenclatura genérica cujo critério interno pode evoluir sem renomear a API do domínio) pertencem a ela, não ao controller nem ao repositório.
 
 #### `PeriodoHorario` (Value Object)
 
-* **Dados:** `data`, `horaInicio`, `horaFim`.
-* **Responsabilidades:** `sobrepoe(outro)`, `ehValido()`.
-* **Por que classe separada:** intervalo temporal é conceito reutilizado por reserva, manutenção e consultas; encapsular evita espalhar comparações de horário em services. Como value object, a igualdade é por valor e o objeto é imutável.
+* **Atributos:** `data: LocalDate`, `horaInicio: LocalTime`, `horaFim: LocalTime`.
+* **Métodos:** `sobrepoe(outroPeriodo: PeriodoHorario): boolean`, `ehValido(): boolean`.
+* **Por que a classe existe:** Intervalo temporal é um conceito imutável (igualdade por valor) reutilizado por reservas, manutenções e consultas; encapsulá-lo evita espalhar comparações de horário pelos services.
 
 #### `Usuario` (Entidade)
 
-* **Dados:** `id`, `nome`, `email`, `telefone`, `perfil` (`CLIENTE` \| `ADMIN`), `ativo`.
-* **Responsabilidades:** `podeRealizarReserva()`.
-* **Por que classe separada:** aptidão para reservar é regra do usuário (ativo/perfil), não do espaço nem do controller.
+* **Atributos:** `id: UUID`, `nome: String`, `email: String`, `telefone: String`, `perfil: TipoPerfil`, `ativo: boolean`.
+* **Métodos:** `podeRealizarReserva(): boolean`.
+* **Por que a classe existe:** Concentra a identidade e a regra de aptidão para reservar (`ativo` e `perfil`), que é regra do usuário, não do espaço nem do controller.
 
-### 2.2 Aplicação — services (coordenação do caso de uso)
+#### `StatusReserva` e `TipoPerfil` (Enums)
+
+* **Valores:** `StatusReserva` (`CONFIRMADA`, `CANCELADA`) e `TipoPerfil` (`CLIENTE`, `ADMIN`).
+* **Por que existem:** Tipificam de forma explícita e segura os estados válidos de uma reserva e os perfis de permissão do usuário no domínio.
+
+---
+
+### 2.2 Aplicação — Serviços de Casos de Uso (Coordenação / Portas Primárias)
 
 #### `ReservaService`
 
-* **Métodos:** `realizarReserva`, `cancelarReserva`, `consultarHorariosDisponiveis`, `consultarEspacosDisponiveis`.
-* **Responsabilidade:** buscar entidades via repositórios; perguntar às entidades as regras que elas possuem; detectar conflito percorrendo reservas ativas e chamando `conflitaCom`; criar/persistir `Reserva`; acionar o módulo de notificação.
-* **O que não faz:** não interpreta HTTP; não contém SQL; não calcula sobreposição “na mão” se isso já está em `PeriodoHorario`/`Reserva`.
+* **Métodos:** `realizarReserva(usuarioId: UUID, espacoId: UUID, periodo: PeriodoHorario): Reserva`, `cancelarReserva(reservaId: UUID, usuarioId: UUID): void`, `consultarHorariosDisponiveis(espacoId: UUID, data: LocalDate): List<PeriodoHorario>`, `consultarEspacosDisponiveis(periodo: PeriodoHorario): List<EspacoEsportivo>`.
+* **Responsabilidade:** Orquestrar repositórios, entidades do domínio e a porta `Notificador` (buscar entidades, delegar validações às entidades, detectar conflito percorrendo reservas e chamando `conflitaCom`, persistir `Reserva` e acionar `Notificador`) sem absorver regras que pertencem às entidades e sem conhecer HTTP, SQL ou SMTP.
+* **Por que a classe existe:** Atua como coordenador dedicado do caso de uso (*Pure Fabrication*), mantendo o domínio livre de dependências de banco de dados e de provedores de notificação.
 
 #### `EspacoEsportivoService`
 
-* **Métodos:** `cadastrarEspaco`, `agendarManutencao`, `liberarManutencao`, `definirRestricoes`.
-* **Responsabilidade:** casos de uso administrativos do espaço; delega invariantes a `EspacoEsportivo` / `RestricaoDeUso`.
+* **Métodos:** `cadastrarEspaco(nome: String, tipo: String, capacidade: int): EspacoEsportivo`, `agendarManutencao(espacoId: UUID, periodo: PeriodoHorario): void`, `liberarManutencao(espacoId: UUID): void`, `definirRestricoes(espacoId: UUID, restricoes: List<RestricaoDeUso>): void`.
+* **Responsabilidade:** Coordenar casos de uso administrativos do espaço, delegando invariantes a `EspacoEsportivo` e `RestricaoDeUso`.
+* **Por que a classe existe:** Isola a orquestração das operações administrativas de quadras/espaços em relação à camada de entrada e à persistência.
 
 #### `UsuarioService`
 
-* **Métodos:** `cadastrarUsuario`, `buscarUsuario`.
-* **Responsabilidade:** ciclo de vida de usuário no domínio; sem controller dedicado no protótipo.
+* **Métodos:** `cadastrarUsuario(nome: String, email: String, telefone: String, perfil: TipoPerfil): Usuario`, `buscarUsuario(usuarioId: UUID): Usuario`.
+* **Responsabilidade:** Coordenar o ciclo de vida e a busca de usuários no domínio.
+* **Por que a classe existe:** Encapsula a orquestração de criação e consulta de usuários (RF10), servindo de porta primária para o `UsuarioController`.
 
-#### `NotificacaoService` (módulo de integração)
+---
 
-* **Responsabilidade:** montar/disparar a comunicação de confirmação ou cancelamento via porta `Notificador`.
-* **Por que existe (e não é domínio):** isola o “como avisar” do “como reservar”. `ReservaService` chama `NotificacaoService` (ou a porta, via esse service), em vez de conhecer SMTP, templates ou provedores.
-* **Porta:** `Notificador.notificar(destinatario, assunto, mensagem)`.
-* **Adaptadores:** `EmailNotificador`, `NotificadorFake` (testes/protótipo).
+### 2.3 Adaptadores Primários — Controllers (Camada de Entrada)
 
-### 2.3 Entrada e persistência (fora do domínio, mas relevantes à distribuição)
+#### `ReservaController`
 
-| Classe | Papel |
-| :--- | :--- |
-| `ReservaController` | Entrada dos fluxos de reserva, cancelamento e consulta; só encaminha ao `ReservaService`. |
-| `EspacoEsportivoController` | Entrada administrativa de espaços, manutenção e restrições; encaminha ao `EspacoEsportivoService`. |
-| `ReservaRepository`, `EspacoEsportivoRepository`, `UsuarioRepository` | Portas de persistência (contratos no núcleo; implementações Postgres / InMemory na infraestrutura). |
+* **Métodos:** `criarReserva(request)`, `cancelarReserva(reservaId: UUID, usuarioId: UUID)`, `consultarDisponibilidadeEspaco(espacoId: UUID, data: LocalDate)`, `consultarEspacosDisponiveis(data: LocalDate, horaInicio: LocalTime, horaFim: LocalTime)`.
+* **Por que a classe existe:** Recebe requisições externas (HTTP/CLI) dos fluxos de reserva, cancelamento e consulta e apenas encaminha ao `ReservaService`.
 
-Fluxo canônico (já nos diagramas de sequência/comunicação):
+#### `EspacoEsportivoController`
+
+* **Métodos:** `cadastrarEspaco(request)`, `agendarManutencao(espacoId: UUID, request)`, `definirRestricoes(espacoId: UUID, request)`.
+* **Por que a classe existe:** Adapta a entrada administrativa de espaços, manutenção e restrições de uso, delegando ao `EspacoEsportivoService`.
+
+#### `UsuarioController`
+
+* **Métodos:** `cadastrarUsuario(request)`.
+* **Por que a classe existe:** Recebe a requisição externa de criação de usuário (RF10), valida o formato da entrada e delega ao `UsuarioService`.
+
+---
+
+### 2.4 Portas Secundárias — Interfaces de Saída no Núcleo
+
+#### `Notificador`
+
+* **Métodos:** `notificar(destinatario: String, assunto: String, mensagem: String): void`.
+* **Por que a interface existe:** Define o contrato de saída para envio de notificações (RF06), permitindo trocar o provedor de comunicação sem alterar o `ReservaService`.
+
+#### `ReservaRepository`
+
+* **Métodos:** `salvar(reserva: Reserva): void`, `buscarPorId(id: UUID): Reserva`, `listarPorEspacoEData(espacoId: UUID, data: LocalDate): List<Reserva>`, `listarAtivasPorPeriodo(periodo: PeriodoHorario): List<Reserva>`.
+* **Por que a interface existe:** Define o contrato de persistência e consulta de reservas, isolando o núcleo de detalhes de SQL/banco de dados.
+
+#### `EspacoEsportivoRepository`
+
+* **Métodos:** `salvar(espaco: EspacoEsportivo): void`, `buscarPorId(id: UUID): EspacoEsportivo`, `listarTodos(): List<EspacoEsportivo>`.
+* **Por que a interface existe:** Abstrai o acesso a dados de espaços esportivos, manutenções e restrições associadas.
+
+#### `UsuarioRepository`
+
+* **Métodos:** `salvar(usuario: Usuario): void`, `buscarPorId(id: UUID): Usuario`.
+* **Por que a interface existe:** Abstrai a persistência e recuperação de entidades `Usuario` para os serviços de aplicação.
+
+---
+
+### 2.5 Adaptadores Secundários — Implementações Concretas na Infraestrutura
+
+#### `EmailNotificador` e `NotificadorFake` (Notificação)
+
+* **Implementam:** `Notificador`.
+* **Por que as classes existem:** `EmailNotificador` concretiza o envio de e-mail via SMTP, enquanto `NotificadorFake` simula o envio em memória para testes automatizados e execução local do protótipo.
+
+#### `PostgreSQLReservaRepository`, `PostgreSQLEspacoEsportivoRepository`, `PostgreSQLUsuarioRepository` (e `Sqlite*Repository` / `InMemory*Repository`) (Persistência)
+
+* **Implementam:** `ReservaRepository`, `EspacoEsportivoRepository` e `UsuarioRepository`.
+* **Por que as classes existem:** Os adaptadores relacionais (`PostgreSQL*` na especificação alvo e `Sqlite*` no protótipo local) concretizam a persistência transacional ACID no banco único, enquanto os adaptadores `InMemory` (`InMemoryReservaRepository`, `InMemoryEspacoEsportivoRepository`, `InMemoryUsuarioRepository`) permitem testar as regras de negócio em memória em milissegundos.
+
+Fluxo canônico (alinhado aos diagramas de sequência e comunicação):
 
 ```text
 Cliente → ReservaController → ReservaService
          → repositórios (busca)
-         → Usuario / EspacoEsportivo / Reserva (regras)
+         → Usuario / EspacoEsportivo / RestricaoDeUso / Reserva / PeriodoHorario (regras)
          → ReservaRepository.salvar
-         → NotificacaoService → Notificador
+         → Notificador
 ```
 
 ---
 
-## 3. Justificativas GRASP
+## 3. Distribuição de Responsabilidades e Justificativas GRASP
 
-| Responsabilidade | Quem assume | GRASP | Justificativa |
+| Responsabilidade / Operação | Classe Responsável | Padrão GRASP | Justificativa |
 | :--- | :--- | :--- | :--- |
-| Receber pedido externo e devolver resposta | `ReservaController` / `EspacoEsportivoController` | **Controller** | Capturam o evento na borda e delegam; sem regra de agenda ou manutenção. |
-| Disponibilidade / manutenção do espaço | `EspacoEsportivo` | **Information Expert** | Detém `emManutencao` e `periodosManutencao`. |
-| Validar política de uso | `RestricaoDeUso` (+ coordenação em `EspacoEsportivo`) | **Information Expert** | A restrição conhece seus próprios parâmetros; o espaço conhece *quais* restrições valem. |
-| Sobreposição de intervalos | `PeriodoHorario` | **Information Expert** | Possui `data`, `horaInicio`, `horaFim`. |
-| Conflito de reserva ativa | `Reserva` | **Information Expert** | Combina `estaAtiva()` com o período; critério pode evoluir internamente. |
-| Aptidão do cliente | `Usuario` | **Information Expert** | Conhece `ativo` / `perfil`. |
-| Orquestrar busca, validações cruzadas, persistência e aviso | `ReservaService` | **Pure Fabrication** | Nenhuma entidade deve conhecer repositório ou notificador. |
-| Criar nova `Reserva` após validações | `ReservaService` | **Creator** | Já reúne `Usuario`, `EspacoEsportivo` e `PeriodoHorario` válidos. |
-| Troca de canal de notificação / de banco | `Notificador`, `*Repository` | **Protected Variations**, **Indirection**, **Polymorphism** | Variações tecnológicas ficam atrás de contratos. |
-| Baixo acoplamento entre módulos | Fronteiras de módulo + portas | **Low Coupling** / **High Cohesion** | Cada módulo muda por um motivo principal de negócio. |
+| Receber requisições externas de reserva, cancelamento, consulta e cadastro e retornar resposta | `ReservaController` / `EspacoEsportivoController` / `UsuarioController` | **Controller** | Capturam o evento do caso de uso na borda HTTP/CLI e delegam ao Service correspondente, sem conter regras de negócio. |
+| Verificar se o espaço está disponível (não está em manutenção no período) | `EspacoEsportivo` | **Information Expert** | Detém `emManutencao` e `periodosManutencao`, respondendo `estaDisponivelParaReserva(periodo)`. |
+| Validar política de uso (se usuário e período atendem às restrições do espaço) | `RestricaoDeUso` (+ coordenação em `EspacoEsportivo`) | **Information Expert** | A restrição conhece seus próprios parâmetros (`validar(usuario, periodo)`); o espaço conhece *quais* restrições valem em `restricoesDeUso`. |
+| Calcular se dois intervalos de horário se sobrepõem | `PeriodoHorario` | **Information Expert** | Possui `data`, `horaInicio` e `horaFim` e encapsula o cálculo em `sobrepoe(outroPeriodo)`. |
+| Verificar conflito de horário com reserva ativa | `Reserva` | **Information Expert** | Combina seu estado ativo (`estaAtiva()`) com a sobreposição de `PeriodoHorario` em `conflitaCom(outroPeriodo)`, permitindo evoluir o critério internamente. |
+| Cancelar uma reserva alterando seu status | `Reserva` | **Information Expert** | `Reserva` conhece seu próprio `status` e impede transições inválidas, alterando o estado para `CANCELADA`. |
+| Verificar se o usuário pode fazer uma reserva | `Usuario` | **Information Expert** | Conhece `ativo` e `perfil` e encapsula a regra de aptidão em `podeRealizarReserva()`. |
+| Orquestrar busca em repositórios, validações cruzadas, persistência e disparo de notificação | `ReservaService` | **Pure Fabrication** | Nenhuma entidade do domínio deve conhecer banco de dados ou provedor de notificação. |
+| Instanciar nova `Reserva` após validações | `ReservaService` | **Creator** | Já reúne `Usuario`, `EspacoEsportivo` e `PeriodoHorario` válidos no fluxo do caso de uso. |
+| Desacoplar canal de notificação e mecanismo de persistência do núcleo | `Notificador` e `*Repository` | **Protected Variations**, **Indirection**, **Polymorphism** | Variações tecnológicas (troca de E-mail para WhatsApp ou troca de banco) ficam isoladas atrás de contratos polimórficos. |
+| Manter interações enxutas entre camadas e classes focadas | Fronteiras de módulo + portas | **Low Coupling** e **High Cohesion** | Cada módulo e classe muda por um único motivo principal de negócio e depende apenas das abstrações necessárias. |
 
 ---
 
@@ -160,11 +210,11 @@ A escolha de **`RestricaoDeUso` como entidade** também dialoga com SRP/OCP: a p
 | Separação | Benefício | Custo / risco |
 | :--- | :--- | :--- |
 | Três módulos de domínio (Espaços / Reservas / Usuários) | Coesão por motivo de mudança; facilita equipe pequena evoluir partes sem “tudo em um arquivo”. | Exige disciplina de fronteira (chamadas locais claras; evitar acesso direto ao banco de outro módulo). |
-| Notificação como módulo de integração + `NotificacaoService` / porta | Domínio de reserva não conhece e-mail/WhatsApp; atende ASR2 e testabilidade com Fake. | Mais um tipo/contrato no caminho do caso de uso; risco de over-engineering se o aviso for trivial demais — mitigado mantendo o service fino. |
+| Notificação como módulo de integração atrás da porta `Notificador` e adaptadores (`EmailNotificador`, `NotificadorFake`) | Domínio de reserva não conhece e-mail/WhatsApp; atende ASR2 e testabilidade com Fake sem camada intermediária desnecessária. | Mais um contrato/adaptadores para manter; mitigado mantendo a porta `Notificador` enxuta e acionada diretamente pelo `ReservaService`. |
 | `RestricaoDeUso` como entidade independente | RF09 fica natural (alterar/reassociar restrições); identidade e ciclo de vida próprios. | Mais persistência e consistência de associação espaço↔restrição do que um VO embutido. |
 | `PeriodoHorario` como VO separado | Reuso e encapsulamento de sobreposição; services ficam legíveis. | Classe a mais para um conceito simples — custo baixo frente ao ganho de clareza. |
 | Regras em entidades + orquestração no `ReservaService` | Information Expert real; evita “service anêmico” e “controller gordo”. | Service concentra o fluxo; precisa permanecer só coordenador (não reimplementar regras das entidades). |
-| Sem `UsuarioController` | Menos superfície de API; o cliente não “é controlado”, só usa o sistema. | RF10 precisa de outro adaptador primário mínimo para acionar `UsuarioService`. |
+| Controllers dedicados por módulo (`ReservaController`, `EspacoEsportivoController`, `UsuarioController`) | Cada módulo expõe sua própria borda de entrada de forma uniforme e coesa (inclusive RF10). | Um adaptador primário adicional para manter no roteamento HTTP/CLI. |
 | Nomes genéricos (`conflitaCom`, `sobrepoe`, `validar`) | API estável se a regra interna mudar. | Exige documentação/testes claros do comportamento atual, já que o nome não detalha o critério. |
 
 Em resumo: separa-se **o que muda por motivo de negócio diferente** (espaço, reserva, usuário, canal de aviso) e mantém-se **junto** o que precisa de consistência forte na mesma transação de reserva — alinhado aos ASRs de consistência, modificabilidade de notificação e testabilidade em equipe reduzida.

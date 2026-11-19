@@ -10,7 +10,9 @@ participant ":EspacoEsportivoRepository" as ER
 participant ":ReservaRepository" as RR
 participant "u:Usuario" as U
 participant "e:EspacoEsportivo" as E
+participant "rUso:RestricaoDeUso" as RU
 participant "rExistente:Reserva" as RE
+participant "pExistente:PeriodoHorario" as PH
 participant "novaReserva:Reserva" as NR
 participant ":Notificador" as N
 
@@ -46,6 +48,10 @@ else usuario apto
 
   RS -> E : atendeRestricoes(u, periodo)
   activate E
+  E -> RU : validar(u, periodo)
+  activate RU
+  RU --> E : valido
+  deactivate RU
   E --> RS : atende
   deactivate E
 
@@ -61,6 +67,10 @@ else usuario apto
     loop para cada rExistente em reservasExistentes
       RS -> RE : conflitaCom(periodo)
       activate RE
+      RE -> PH : sobrepoe(periodo)
+      activate PH
+      PH --> RE : sobrepoe
+      deactivate PH
       RE --> RS : conflito
       deactivate RE
     end
