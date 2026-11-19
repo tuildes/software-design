@@ -52,13 +52,6 @@ final class ReservaController {
     }
 }
 
-private func uuidLimpo(_ texto: String) -> UUID? {
-    let limpo = texto
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-        .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-    return UUID(uuidString: limpo)
-}
-
 private func resumo(_ reserva: Reserva) -> [String: Any] {
     [
         "id": reserva.id.uuidString,

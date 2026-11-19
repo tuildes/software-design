@@ -39,7 +39,16 @@ final class ServidorHttpTests: XCTestCase {
         XCTAssertEqual(statusAdmin, 201)
         let adminId = try XCTUnwrap(admin["id"] as? String)
 
+        let (statusClienteEspaco, _) = try post(base + "/api/v1/espacos", [
+            "usuarioId": usuarioId,
+            "nome": "Quadra Negada",
+            "tipo": "poliesportiva",
+            "capacidade": 14,
+        ])
+        XCTAssertEqual(statusClienteEspaco, 403)
+
         let (statusEspaco, espaco) = try post(base + "/api/v1/espacos", [
+            "usuarioId": adminId,
             "nome": "Quadra 1",
             "tipo": "poliesportiva",
             "capacidade": 14,
@@ -62,15 +71,15 @@ final class ServidorHttpTests: XCTestCase {
         XCTAssertEqual(statusConflito, 409)
         XCTAssertEqual(conflito["mensagem"] as? String, "Reserva invalida: horario ja reservado")
 
-        let (statusProibido, proibido) = try post(base + "/api/v1/reservas", [
+        let (statusAdminReserva, adminReserva) = try post(base + "/api/v1/reservas", [
             "usuarioId": adminId,
             "espacoId": espacoId,
             "data": "2026-12-01",
             "horaInicio": "21:00",
             "horaFim": "22:00",
         ])
-        XCTAssertEqual(statusProibido, 403)
-        XCTAssertEqual(proibido["mensagem"] as? String, "Usuario nao autorizado a reservar")
+        XCTAssertEqual(statusAdminReserva, 201)
+        XCTAssertEqual(adminReserva["status"] as? String, "CONFIRMADA")
     }
 }
 

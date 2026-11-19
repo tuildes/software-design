@@ -18,6 +18,6 @@ final class Usuario {
     }
 
     func podeRealizarReserva() -> Bool {
-        ativo && perfil == .cliente
+        ativo
     }
 }

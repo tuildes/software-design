@@ -116,6 +116,7 @@ POST /api/v1/espacos
 Content-Type: application/json
 
 {
+  "usuarioId": "…-uuid-do-admin-…",
   "nome": "Quadra 1",
   "tipo": "Quadra",
   "capacidade": 10
@@ -124,6 +125,7 @@ Content-Type: application/json
 
 | Campo | Obrigatório | Notas |
 | :--- | :--- | :--- |
+| `usuarioId` | sim | deve ser `ADMIN` ativo (RF01); caso contrário `403` |
 | `nome` | sim | |
 | `tipo` | sim | |
 | `capacidade` | sim | inteiro &gt; 0 |
@@ -198,20 +200,24 @@ Sem corpo. Resposta `200` com array de objetos no mesmo formato do item criado.
 Com o servidor no ar:
 
 ```bash
-# 1) Usuário
+# 1) Admin (para cadastrar espaço) e cliente (para reservar)
+curl -s -X POST http://127.0.0.1:8080/api/v1/usuarios \
+  -H 'Content-Type: application/json' \
+  -d '{"nome":"Admin","email":"admin@ex.com","telefone":"1","perfil":"ADMIN"}'
+
 curl -s -X POST http://127.0.0.1:8080/api/v1/usuarios \
   -H 'Content-Type: application/json' \
   -d '{"nome":"Ana","email":"ana@ex.com","telefone":"11999999999","perfil":"CLIENTE"}'
 
-# 2) Espaço
+# 2) Espaço (RF01 — requer usuarioId de ADMIN)
 curl -s -X POST http://127.0.0.1:8080/api/v1/espacos \
   -H 'Content-Type: application/json' \
-  -d '{"nome":"Quadra 1","tipo":"Quadra","capacidade":10}'
+  -d '{"usuarioId":"UUID_ADMIN","nome":"Quadra 1","tipo":"Quadra","capacidade":10}'
 
 # 3) Reserva (troque os UUIDs)
 curl -s -X POST http://127.0.0.1:8080/api/v1/reservas \
   -H 'Content-Type: application/json' \
-  -d '{"usuarioId":"UUID","espacoId":"UUID","data":"2026-11-20","horaInicio":"10:00","horaFim":"11:00"}'
+  -d '{"usuarioId":"UUID_CLIENTE","espacoId":"UUID","data":"2026-11-20","horaInicio":"10:00","horaFim":"11:00"}'
 
 # 4) Listar
 curl -s http://127.0.0.1:8080/api/v1/reservas
@@ -269,11 +275,11 @@ Comandos pontuais (também contra a API):
 
 ```bash
 swift run locacao-espacos usuario cadastrar \
-  --nome Ana --email ana@ex.com --telefone 11999999999 \
-  --perfil CLIENTE --servidor http://127.0.0.1:8080
+  --nome Admin --email admin@ex.com --telefone 1 \
+  --perfil ADMIN --servidor http://127.0.0.1:8080
 
 swift run locacao-espacos espaco cadastrar \
-  --nome "Quadra 1" --tipo Quadra --capacidade 10 \
+  --usuario UUID_ADMIN --nome "Quadra 1" --tipo Quadra --capacidade 10 \
   --servidor http://127.0.0.1:8080
 
 swift run locacao-espacos reserva criar \

@@ -18,6 +18,7 @@ struct LocacaoEspacosApp {
 private struct ItemSessao {
     let id: String
     let nome: String
+    let perfil: String?
 }
 
 // MARK: - Apresentação no terminal
@@ -218,14 +219,20 @@ private enum Cli {
             tituloSucesso: "Usuario cadastrado"
         )
         if codigo == 0, let id = ultimoIdEnviado {
-            usuariosSessao.append(ItemSessao(id: id, nome: nome))
+            usuariosSessao.append(ItemSessao(id: id, nome: nome, perfil: perfil))
         }
         return codigo
     }
 
     private static func cadastrarEspacoInterativo(servidor: String) -> Int32 {
         Ui.secao("Cadastrar espaco")
-        guard let nome = pedir("Nome"),
+        let admins = usuariosSessao.filter { ($0.perfil ?? "").uppercased() == "ADMIN" }
+        guard let usuarioId = pedirReferencia(
+            rotulo: "Admin",
+            itens: admins,
+            dica: "numero da sessao ou UUID do ADMIN"
+        ),
+              let nome = pedir("Nome"),
               let tipo = pedir("Tipo"),
               let capacidadeTexto = pedir("Capacidade"),
               let capacidade = Int(capacidadeTexto), capacidade > 0 else {
@@ -237,6 +244,7 @@ private enum Cli {
             metodo: "POST",
             caminho: "/api/v1/espacos",
             campos: [
+                "usuarioId": usuarioId,
                 "nome": nome,
                 "tipo": tipo,
                 "capacidade": capacidade,
@@ -245,7 +253,7 @@ private enum Cli {
             tituloSucesso: "Espaco cadastrado"
         )
         if codigo == 0, let id = ultimoIdEnviado {
-            espacosSessao.append(ItemSessao(id: id, nome: nome))
+            espacosSessao.append(ItemSessao(id: id, nome: nome, perfil: nil))
         }
         return codigo
     }
@@ -326,17 +334,23 @@ private enum Cli {
 
     private static func espaco(_ args: [String]) throws -> Int32 {
         guard args.first == "cadastrar" else {
-            throw ErroCli(mensagem: "Use: espaco cadastrar --nome --tipo --capacidade")
+            throw ErroCli(mensagem: "Use: espaco cadastrar --usuario --nome --tipo --capacidade")
         }
         let mapa = try valores(Array(args.dropFirst()))
-        try exigir(mapa, ["--nome", "--tipo", "--capacidade", "--servidor"])
+        try exigir(mapa, ["--usuario", "--nome", "--tipo", "--capacidade", "--servidor"])
+        let usuario = try obrigatorio(mapa, "--usuario")
         let nome = try obrigatorio(mapa, "--nome")
         let tipo = try obrigatorio(mapa, "--tipo")
         let capacidadeTexto = try obrigatorio(mapa, "--capacidade")
         guard let capacidade = Int(capacidadeTexto), capacidade > 0 else {
             throw ErroCli(mensagem: "Capacidade invalida")
         }
-        let campos: [String: Any] = ["nome": nome, "tipo": tipo, "capacidade": capacidade]
+        let campos: [String: Any] = [
+            "usuarioId": usuario,
+            "nome": nome,
+            "tipo": tipo,
+            "capacidade": capacidade,
+        ]
         return enviar(
             metodo: "POST",
             caminho: "/api/v1/espacos",
@@ -687,7 +701,8 @@ private enum Cli {
         Ui.item("      [--perfil CLIENTE|ADMIN] [--servidor URL]")
         Ui.vazio()
         Ui.item("  locacao-espacos espaco cadastrar")
-        Ui.item("      --nome NOME --tipo TIPO --capacidade N [--servidor URL]")
+        Ui.item("      --usuario UUID_ADMIN --nome NOME --tipo TIPO --capacidade N")
+        Ui.item("      [--servidor URL]")
         Ui.vazio()
         Ui.item("  locacao-espacos reserva criar")
         Ui.item("      --usuario UUID --espaco UUID")

@@ -35,3 +35,10 @@ func json(_ objeto: Any) -> String {
 func respostaDeErro(_ status: Int, _ mensagem: String) -> Resposta {
     Resposta(status: status, corpo: json(["mensagem": mensagem]))
 }
+
+func uuidLimpo(_ texto: String) -> UUID? {
+    let limpo = texto
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+    return UUID(uuidString: limpo)
+}

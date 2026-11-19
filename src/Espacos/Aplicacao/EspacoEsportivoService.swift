@@ -2,12 +2,20 @@ import Foundation
 
 final class EspacoEsportivoService: EspacoPort {
     private let espacoRepository: EspacoEsportivoRepository
+    private let usuarioRepository: UsuarioRepository
 
-    init(espacoRepository: EspacoEsportivoRepository) {
+    init(espacoRepository: EspacoEsportivoRepository, usuarioRepository: UsuarioRepository) {
         self.espacoRepository = espacoRepository
+        self.usuarioRepository = usuarioRepository
     }
 
-    func cadastrarEspaco(nome: String, tipo: String, capacidade: Int) -> EspacoEsportivo {
+    func cadastrarEspaco(usuarioId: UUID, nome: String, tipo: String, capacidade: Int) throws -> EspacoEsportivo {
+        guard let usuario = usuarioRepository.buscarPorId(usuarioId) else {
+            throw ErroDeEspaco.usuarioNaoEncontrado
+        }
+        if usuario.perfil != .admin || !usuario.ativo {
+            throw ErroDeEspaco.naoAutorizado
+        }
         let espaco = EspacoEsportivo(nome: nome, tipo: tipo, capacidade: capacidade)
         espacoRepository.salvar(espaco)
         return espaco

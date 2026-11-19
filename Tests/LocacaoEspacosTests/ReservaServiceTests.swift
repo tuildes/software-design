@@ -25,19 +25,27 @@ final class ReservaServiceTests: XCTestCase {
 
     func testUsuarioInaptoNaoReservaNemNotifica() throws {
         let nucleo = try montarNucleo(persistencia: .memoria, notificador: .fake)
-        let (admin, espaco) = preparar(nucleo, perfil: .admin)
+        let (_, espaco) = preparar(nucleo)
         let horario = periodo("2026-12-01", "19:00", "20:00")
-        XCTAssertThrowsError(try nucleo.reservaService.realizarReserva(usuarioId: admin.id, espacoId: espaco.id, periodo: horario)) { erro in
-            XCTAssertEqual(erro as? ErroDeReserva, .usuarioNaoAutorizado)
-            XCTAssertEqual((erro as? ErroDeReserva)?.mensagem, "Usuario nao autorizado a reservar")
-        }
         let inativo = usuarioCliente(email: "inativo@exemplo.com", ativo: false)
         nucleo.usuarios.salvar(inativo)
         XCTAssertThrowsError(try nucleo.reservaService.realizarReserva(usuarioId: inativo.id, espacoId: espaco.id, periodo: horario)) { erro in
             XCTAssertEqual(erro as? ErroDeReserva, .usuarioNaoAutorizado)
+            XCTAssertEqual((erro as? ErroDeReserva)?.mensagem, "Usuario nao autorizado a reservar")
         }
         XCTAssertTrue(try notificadorFake(nucleo).enviados.isEmpty)
         XCTAssertTrue(nucleo.reservas.listarPorEspacoEData(espaco.id, horario.data).isEmpty)
+    }
+
+    func testAdminPodeRealizarReserva() throws {
+        let nucleo = try montarNucleo(persistencia: .memoria, notificador: .fake)
+        let (admin, espaco) = preparar(nucleo, perfil: .admin)
+        let reserva = try nucleo.reservaService.realizarReserva(
+            usuarioId: admin.id,
+            espacoId: espaco.id,
+            periodo: periodo("2026-12-01", "19:00", "20:00")
+        )
+        XCTAssertEqual(reserva.status, .confirmada)
     }
 
     func testUsuarioOuEspacoInexistente() throws {
@@ -54,8 +62,14 @@ final class ReservaServiceTests: XCTestCase {
 
     func testManutencaoERestricaoBloqueiamReserva() throws {
         let nucleo = try montarNucleo(persistencia: .memoria, notificador: .fake)
+        let admin = nucleo.usuarioService.cadastrarUsuario(nome: "Admin", email: "admin@exemplo.com", telefone: "1", perfil: .admin)
         let usuario = nucleo.usuarioService.cadastrarUsuario(nome: "Ana", email: "ana@exemplo.com", telefone: "1", perfil: .cliente)
-        let espaco = nucleo.espacoService.cadastrarEspaco(nome: "Quadra 1", tipo: "poliesportiva", capacidade: 10)
+        let espaco = try nucleo.espacoService.cadastrarEspaco(
+            usuarioId: admin.id,
+            nome: "Quadra 1",
+            tipo: "poliesportiva",
+            capacidade: 10
+        )
         let horario = periodo("2026-12-01", "19:00", "20:00")
         try nucleo.espacoService.agendarManutencao(espacoId: espaco.id, periodo: horario)
         XCTAssertThrowsError(try nucleo.reservaService.realizarReserva(usuarioId: usuario.id, espacoId: espaco.id, periodo: horario)) { erro in

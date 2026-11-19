@@ -59,7 +59,7 @@ func montarNucleo(persistencia: ModoPersistencia, notificador: ModoNotificador) 
     }
 
     let usuarioService = UsuarioService(usuarioRepository: usuarios)
-    let espacoService = EspacoEsportivoService(espacoRepository: espacos)
+    let espacoService = EspacoEsportivoService(espacoRepository: espacos, usuarioRepository: usuarios)
     let reservaService = ReservaService(
         reservaRepository: reservas,
         espacoRepository: espacos,

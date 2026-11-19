@@ -31,8 +31,9 @@ final class RegrasDominioTests: XCTestCase {
 
     func testAptidaoDoUsuario() {
         XCTAssertTrue(usuarioCliente().podeRealizarReserva())
+        XCTAssertTrue(usuarioCliente(perfil: .admin).podeRealizarReserva())
         XCTAssertFalse(usuarioCliente(ativo: false).podeRealizarReserva())
-        XCTAssertFalse(usuarioCliente(perfil: .admin).podeRealizarReserva())
+        XCTAssertFalse(usuarioCliente(perfil: .admin, ativo: false).podeRealizarReserva())
     }
 
     func testManutencaoBloqueiaSomentePeriodoSobreposto() {
